@@ -1,0 +1,13 @@
+# Node
+node_modules/
+
+# Gradle
+.gradle/
+build/
+
+# IntelliJ
+.idea/
+*.iml
+
+# OS
+.DS_Store
