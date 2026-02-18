@@ -7,7 +7,7 @@ import { ListTodo, BarChart3 } from 'lucide-react';
 import { useMediaQuery } from './hooks/use-media-query';
 import type { Task } from './types';
 
-import { createTodo, fetchTodoTree, type TodoTreeNode } from '@/features/todos/todo.api';
+import { createTodo, deleteTodo, fetchTodoTree, type TodoTreeNode } from '@/features/todos/todo.api';
 
 /** 트리 응답을 플랫 Task 배열로 변환 */
 function flattenTree(nodes: TodoTreeNode[], parentId?: string): Task[] {
@@ -74,10 +74,25 @@ export default function App() {
     setTasks(tasks.map((task) => (task.id === id ? { ...task, ...updates } : task)));
   };
 
-  const handleDeleteTask = (id: string) => {
-    setTasks(tasks.filter((task) => task.id !== id));
-    if (selectedTaskId === id) {
-      setSelectedTaskId(null);
+  const handleDeleteTask = async (id: string) => {
+    try {
+      await deleteTodo(Number(id));
+
+      // 삭제된 항목과 모든 자식(서브트리)을 state에서 제거
+      const toRemove = new Set<string>();
+      const collect = (taskId: string) => {
+        toRemove.add(taskId);
+        tasks.filter((t) => t.parentId === taskId).forEach((child) => collect(child.id));
+      };
+      collect(id);
+
+      setTasks((prev) => prev.filter((t) => !toRemove.has(t.id)));
+      if (selectedTaskId && toRemove.has(selectedTaskId)) {
+        setSelectedTaskId(null);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('삭제 실패');
     }
   };
 
