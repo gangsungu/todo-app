@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TaskList } from './components/task-list';
 import { GanttChart } from './components/gantt-chart';
 import { MobileTaskList } from './components/mobile-task-list';
@@ -7,115 +7,67 @@ import { ListTodo, BarChart3 } from 'lucide-react';
 import { useMediaQuery } from './hooks/use-media-query';
 import type { Task } from './types';
 
-const SAMPLE_TASKS: Task[] = [
-  {
-    id: '1',
-    name: '프로젝트 기획',
-    startDate: new Date(2026, 1, 3),
-    endDate: new Date(2026, 1, 10),
-    progress: 0,
-    status: 'in-progress',
-    color: '#10b981',
-  },
-  {
-    id: '1-1',
-    name: '요구사항 수집 및 분석',
-    startDate: new Date(2026, 1, 3),
-    endDate: new Date(2026, 1, 5),
-    progress: 100,
-    status: 'completed',
-    color: '#10b981',
-    parentId: '1',
-    weight: 50,
-  },
-  {
-    id: '1-2',
-    name: '개발일정 확인',
-    startDate: new Date(2026, 1, 6),
-    endDate: new Date(2026, 1, 8),
-    progress: 0,
-    status: 'todo',
-    color: '#10b981',
-    parentId: '1',
-    weight: 30,
-  },
-  {
-    id: '1-3',
-    name: '리소스 확보',
-    startDate: new Date(2026, 1, 8),
-    endDate: new Date(2026, 1, 10),
-    progress: 0,
-    status: 'todo',
-    color: '#10b981',
-    parentId: '1',
-    weight: 20,
-  },
-  {
-    id: '2',
-    name: 'UI/UX 디자인',
-    startDate: new Date(2026, 1, 11),
-    endDate: new Date(2026, 1, 18),
-    progress: 0,
-    status: 'todo',
-    color: '#3b82f6',
-  },
-  {
-    id: '2-1',
-    name: '와이어프레임 작성',
-    startDate: new Date(2026, 1, 11),
-    endDate: new Date(2026, 1, 13),
-    progress: 0,
-    status: 'todo',
-    color: '#3b82f6',
-    parentId: '2',
-    weight: 30,
-  },
-  {
-    id: '2-2',
-    name: '디자인 시스템 구축',
-    startDate: new Date(2026, 1, 14),
-    endDate: new Date(2026, 1, 16),
-    progress: 0,
-    status: 'todo',
-    color: '#3b82f6',
-    parentId: '2',
-    weight: 50,
-  },
-  {
-    id: '2-3',
-    name: '최종 디자인 확정',
-    startDate: new Date(2026, 1, 17),
-    endDate: new Date(2026, 1, 18),
-    progress: 0,
-    status: 'todo',
-    color: '#3b82f6',
-    parentId: '2',
-    weight: 20,
-  },
-  {
-    id: '3',
-    name: '프론트엔드 개발',
-    startDate: new Date(2026, 1, 19),
-    endDate: new Date(2026, 1, 28),
-    progress: 0,
-    status: 'todo',
-    color: '#8b5cf6',
-  },
-];
+import { createTodo, fetchTodoTree, type TodoTreeNode } from '@/features/todos/todo.api';
+
+/** 트리 응답을 플랫 Task 배열로 변환 */
+function flattenTree(nodes: TodoTreeNode[], parentId?: string): Task[] {
+  const result: Task[] = [];
+  const today = new Date();
+  const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  for (const node of nodes) {
+    const id = String(node.id);
+    result.push({
+      id,
+      name: node.title,
+      startDate: today,
+      endDate: nextWeek,
+      progress: node.description ? 100 : 0, // description = completed
+      status: node.description ? 'completed' : 'todo',
+      color: '#3b82f6',
+      parentId,
+      weight: node.sortOrder,
+    });
+
+    if (node.children.length > 0) {
+      result.push(...flattenTree(node.children, id));
+    }
+  }
+  return result;
+}
 
 export default function App() {
-  const [tasks, setTasks] = useState<Task[]>(SAMPLE_TASKS);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'gantt'>('list');
 
   const isMobile = useMediaQuery('(max-width: 768px)');
 
-  const handleAddTask = (newTask: Omit<Task, 'id'>) => {
-    const task: Task = {
-      ...newTask,
-      id: Date.now().toString(),
-    };
-    setTasks([...tasks, task]);
+  useEffect(() => {
+    fetchTodoTree()
+      .then((tree) => setTasks(flattenTree(tree)))
+      .catch((e) => console.error('트리 조회 실패', e));
+  }, []);
+
+  const handleAddTask = async (newTask: Omit<Task, 'id'>) => {
+    try {
+      const saved = await createTodo({
+        title: newTask.name,
+        parentId: newTask.parentId ? Number(newTask.parentId) : null,
+        sortOrder: newTask.weight ?? 0,
+      });
+
+      const task: Task = {
+        ...newTask,
+        id: String(saved.id),
+      };
+
+      setTasks((prev) => [...prev, task]);
+    }
+    catch(e) {
+      console.error(e);
+      alert("할 일 추가 실패");
+    }
   };
 
   const handleUpdateTask = (id: string, updates: Partial<Task>) => {

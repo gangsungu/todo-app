@@ -17,13 +17,17 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "todos", indexes = {
     @Index(name = "idx_parent_sort", columnList = "parent_id, sort_order")
 })
 @Getter
+@AllArgsConstructor
+@NoArgsConstructor
 public class Todo {
 
     @Id
@@ -51,8 +55,6 @@ public class Todo {
 
     @Column(nullable = false)
     private LocalDateTime updatedAt;
-
-    protected Todo() {}
 
     public static Todo create(String title, Todo parent, int sortOrder) {
         Todo todo = new Todo();
