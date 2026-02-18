@@ -95,6 +95,13 @@ public class TodoQueryService {
         }
     }
 
+    public void delete(Long id) {
+        if (!todoRepository.existsById(id)) {
+            throw new IllegalArgumentException("Todo not found: " + id);
+        }
+        todoRepository.deleteById(id);
+    }
+
     public TodoResponse create(CreateTodoRequest request) {
         Todo parent = null;
         if (request.parentId() != null) {

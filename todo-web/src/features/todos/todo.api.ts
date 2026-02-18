@@ -34,3 +34,7 @@ export async function createTodo(body: CreateTodoRequest) {
     body: JSON.stringify(body),
   });
 }
+
+export async function deleteTodo(id: number) {
+  return apiFetch<void>(`/api/todos/${id}`, { method: 'DELETE' });
+}

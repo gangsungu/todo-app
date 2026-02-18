@@ -9,6 +9,7 @@ import java.util.List;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,6 +35,12 @@ public class TodoController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void complete(@PathVariable Long id, @RequestBody TodoCompletedUpdateRequest request) {
         todoQueryService.updateCompletedCascade(id, request.completed());
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        todoQueryService.delete(id);
     }
 
     @PostMapping
