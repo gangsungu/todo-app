@@ -1,6 +1,8 @@
 package com.roykhan.todoapi.domain.todo.service;
 
 import com.roykhan.todoapi.domain.todo.Todo;
+import com.roykhan.todoapi.domain.todo.dto.CreateTodoRequest;
+import com.roykhan.todoapi.domain.todo.dto.TodoResponse;
 import com.roykhan.todoapi.domain.todo.dto.TodoTreeResponse;
 import com.roykhan.todoapi.domain.todo.repository.TodoRepository;
 import java.util.ArrayDeque;
@@ -91,5 +93,20 @@ public class TodoQueryService {
                 }
             }
         }
+    }
+
+    public TodoResponse create(CreateTodoRequest request) {
+        Todo parent = null;
+        if (request.parentId() != null) {
+            parent = todoRepository.findById(request.parentId())
+                .orElseThrow(() -> new IllegalArgumentException("Parent Todo not found: " + request.parentId()));
+        }
+
+        int sortOrder = request.sortOrder() != null ? request.sortOrder() : 0;
+
+        Todo todo = Todo.create(request.title(), parent, sortOrder);
+        todoRepository.save(todo);
+
+        return TodoResponse.from(todo);
     }
 }
