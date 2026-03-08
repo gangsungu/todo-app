@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { TaskList } from './components/task-list';
 import { GanttChart } from './components/gantt-chart';
 import { MobileTaskList } from './components/mobile-task-list';
@@ -7,208 +7,243 @@ import { ListTodo, BarChart3 } from 'lucide-react';
 import { useMediaQuery } from './hooks/use-media-query';
 import type { Task } from './types';
 
-import { createTodo, deleteTodo, fetchTodoTree, type TodoTreeNode } from '@/features/todos/todo.api';
-
-/** 트리 응답을 플랫 Task 배열로 변환 */
-function flattenTree(nodes: TodoTreeNode[], parentId?: string): Task[] {
-  const result: Task[] = [];
-  const today = new Date();
-  const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-  for (const node of nodes) {
-    const id = String(node.id);
-    result.push({
-      id,
-      name: node.title,
-      startDate: today,
-      endDate: nextWeek,
-      progress: node.description ? 100 : 0, // description = completed
-      status: node.description ? 'completed' : 'todo',
-      color: '#3b82f6',
-      parentId,
-      weight: node.sortOrder,
-    });
-
-    if (node.children.length > 0) {
-      result.push(...flattenTree(node.children, id));
-    }
-  }
-  return result;
-}
+const SAMPLE_TASKS: Task[] = [
+  {
+    id: '1',
+    name: 'Product Design Phase',
+    startDate: new Date(2026, 1, 3),
+    endDate: new Date(2026, 1, 10),
+    progress: 0,
+    status: 'in-progress',
+    color: '#4F46E5',
+  },
+  {
+    id: '1-1',
+    name: 'User research & requirements',
+    startDate: new Date(2026, 1, 3),
+    endDate: new Date(2026, 1, 5),
+    progress: 100,
+    status: 'completed',
+    color: '#4F46E5',
+    parentId: '1',
+    weight: 50,
+  },
+  {
+    id: '1-2',
+    name: 'Define timeline & resources',
+    startDate: new Date(2026, 1, 6),
+    endDate: new Date(2026, 1, 8),
+    progress: 0,
+    status: 'todo',
+    color: '#4F46E5',
+    parentId: '1',
+    weight: 30,
+  },
+  {
+    id: '1-3',
+    name: 'Resource allocation',
+    startDate: new Date(2026, 1, 8),
+    endDate: new Date(2026, 1, 10),
+    progress: 0,
+    status: 'todo',
+    color: '#4F46E5',
+    parentId: '1',
+    weight: 20,
+  },
+  {
+    id: '2',
+    name: 'UI/UX Design',
+    startDate: new Date(2026, 1, 11),
+    endDate: new Date(2026, 1, 18),
+    progress: 0,
+    status: 'todo',
+    color: '#4F46E5',
+  },
+  {
+    id: '2-1',
+    name: 'Wireframe creation',
+    startDate: new Date(2026, 1, 11),
+    endDate: new Date(2026, 1, 13),
+    progress: 0,
+    status: 'todo',
+    color: '#4F46E5',
+    parentId: '2',
+    weight: 30,
+  },
+  {
+    id: '2-2',
+    name: 'Design system setup',
+    startDate: new Date(2026, 1, 14),
+    endDate: new Date(2026, 1, 16),
+    progress: 0,
+    status: 'todo',
+    color: '#4F46E5',
+    parentId: '2',
+    weight: 50,
+  },
+  {
+    id: '2-3',
+    name: 'Final design review',
+    startDate: new Date(2026, 1, 17),
+    endDate: new Date(2026, 1, 18),
+    progress: 0,
+    status: 'todo',
+    color: '#4F46E5',
+    parentId: '2',
+    weight: 20,
+  },
+  {
+    id: '3',
+    name: 'Frontend Development',
+    startDate: new Date(2026, 1, 19),
+    endDate: new Date(2026, 1, 28),
+    progress: 0,
+    status: 'todo',
+    color: '#4F46E5',
+  },
+];
 
 export default function App() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<Task[]>(SAMPLE_TASKS);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'gantt'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'gantt'>('gantt');
 
   const isMobile = useMediaQuery('(max-width: 768px)');
 
-  useEffect(() => {
-    fetchTodoTree()
-      .then((tree) => setTasks(flattenTree(tree)))
-      .catch((e) => console.error('트리 조회 실패', e));
-  }, []);
-
-  const handleAddTask = async (newTask: Omit<Task, 'id'>) => {
-    try {
-      const saved = await createTodo({
-        title: newTask.name,
-        parentId: newTask.parentId ? Number(newTask.parentId) : null,
-        sortOrder: newTask.weight ?? 0,
-      });
-
-      const task: Task = {
-        ...newTask,
-        id: String(saved.id),
-      };
-
-      setTasks((prev) => [...prev, task]);
-    }
-    catch(e) {
-      console.error(e);
-      alert("할 일 추가 실패");
-    }
+  const handleAddTask = (newTask: Omit<Task, 'id'>) => {
+    const task: Task = {
+      ...newTask,
+      id: Date.now().toString(),
+    };
+    setTasks([...tasks, task]);
   };
 
   const handleUpdateTask = (id: string, updates: Partial<Task>) => {
     setTasks(tasks.map((task) => (task.id === id ? { ...task, ...updates } : task)));
   };
 
-  const handleDeleteTask = async (id: string) => {
-    try {
-      await deleteTodo(Number(id));
-
-      // 삭제된 항목과 모든 자식(서브트리)을 state에서 제거
-      const toRemove = new Set<string>();
-      const collect = (taskId: string) => {
-        toRemove.add(taskId);
-        tasks.filter((t) => t.parentId === taskId).forEach((child) => collect(child.id));
-      };
-      collect(id);
-
-      setTasks((prev) => prev.filter((t) => !toRemove.has(t.id)));
-      if (selectedTaskId && toRemove.has(selectedTaskId)) {
-        setSelectedTaskId(null);
-      }
-    } catch (e) {
-      console.error(e);
-      alert('삭제 실패');
+  const handleDeleteTask = (id: string) => {
+    setTasks(tasks.filter((task) => task.id !== id));
+    if (selectedTaskId === id) {
+      setSelectedTaskId(null);
     }
   };
 
   if (isMobile) {
     return (
-        <div className="size-full flex flex-col bg-gray-50">
-          <header className="bg-white border-b px-4 py-3 sticky top-0 z-20">
-            <h1 className="text-xl font-bold text-gray-900">프로젝트 관리</h1>
-          </header>
+      <div className="size-full flex flex-col bg-gray-50">
+        <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20">
+          <h1 className="text-lg font-semibold text-gray-900">Gantodo</h1>
+        </header>
 
-          <div className="flex-1 overflow-hidden">
-            {viewMode === 'list' ? (
-                <MobileTaskList
-                    tasks={tasks}
-                    onAddTask={handleAddTask}
-                    onUpdateTask={handleUpdateTask}
-                    onDeleteTask={handleDeleteTask}
-                    selectedTaskId={selectedTaskId}
-                    onSelectTask={setSelectedTaskId}
-                />
-            ) : (
-                <MobileGanttChart
-                    tasks={tasks}
-                    selectedTaskId={selectedTaskId}
-                    onSelectTask={setSelectedTaskId}
-                />
-            )}
-          </div>
+        <div className="flex-1 overflow-hidden">
+          {viewMode === 'list' ? (
+            <MobileTaskList
+              tasks={tasks}
+              onAddTask={handleAddTask}
+              onUpdateTask={handleUpdateTask}
+              onDeleteTask={handleDeleteTask}
+              selectedTaskId={selectedTaskId}
+              onSelectTask={setSelectedTaskId}
+            />
+          ) : (
+            <MobileGanttChart
+              tasks={tasks}
+              selectedTaskId={selectedTaskId}
+              onSelectTask={setSelectedTaskId}
+            />
+          )}
+        </div>
 
-          {/* Bottom Navigation */}
-          <div className="bg-white border-t">
-            <div className="flex items-center">
-              <button
-                  onClick={() => setViewMode('list')}
-                  className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${
-                      viewMode === 'list'
-                          ? 'text-blue-600'
-                          : 'text-gray-400'
-                  }`}
-              >
-                <ListTodo className="w-6 h-6" />
-                <span className="text-xs font-medium">작업 목록</span>
-              </button>
-              <button
-                  onClick={() => setViewMode('gantt')}
-                  className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${
-                      viewMode === 'gantt'
-                          ? 'text-blue-600'
-                          : 'text-gray-400'
-                  }`}
-              >
-                <BarChart3 className="w-6 h-6" />
-                <span className="text-xs font-medium">간트 차트</span>
-              </button>
-            </div>
+        {/* Bottom Navigation */}
+        <div className="bg-white border-t border-gray-200">
+          <div className="flex items-center">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${
+                viewMode === 'list'
+                  ? 'text-indigo-600'
+                  : 'text-gray-400'
+              }`}
+            >
+              <ListTodo className="w-5 h-5" />
+              <span className="text-xs font-medium">Tasks</span>
+            </button>
+            <button
+              onClick={() => setViewMode('gantt')}
+              className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${
+                viewMode === 'gantt'
+                  ? 'text-indigo-600'
+                  : 'text-gray-400'
+              }`}
+            >
+              <BarChart3 className="w-5 h-5" />
+              <span className="text-xs font-medium">Timeline</span>
+            </button>
           </div>
         </div>
+      </div>
     );
   }
 
   return (
-      <div className="size-full flex flex-col bg-gray-50">
-        <header className="bg-white border-b px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">프로젝트 관리</h1>
-              <p className="text-sm text-gray-600 mt-1">간트 차트와 투두리스트를 한 곳에서</p>
-            </div>
+    <div className="size-full flex flex-col bg-white">
+      <header className="border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+        <h1 className="text-lg font-semibold text-gray-900">Gantodo</h1>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg">
+            <button
+              onClick={() => setViewMode('gantt')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                viewMode === 'gantt'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              Timeline
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                viewMode === 'list'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <ListTodo className="w-3.5 h-3.5" />
+              Tasks
+            </button>
+          </div>
+        </div>
+      </header>
 
-            {/* View Mode Toggle */}
-            <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
-              <button
-                  onClick={() => setViewMode('list')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all ${
-                      viewMode === 'list'
-                          ? 'bg-white text-blue-600 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
-                  }`}
-              >
-                <ListTodo className="w-5 h-5" />
-                <span className="font-medium">작업 목록</span>
-              </button>
-              <button
-                  onClick={() => setViewMode('gantt')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all ${
-                      viewMode === 'gantt'
-                          ? 'bg-white text-blue-600 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
-                  }`}
-              >
-                <BarChart3 className="w-5 h-5" />
-                <span className="font-medium">간트 차트</span>
-              </button>
+      <div className="flex-1 overflow-hidden">
+        {viewMode === 'list' ? (
+          <div className="h-full flex">
+            <div className="w-80 flex-shrink-0">
+              <TaskList
+                tasks={tasks}
+                onAddTask={handleAddTask}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
+                selectedTaskId={selectedTaskId}
+                onSelectTask={setSelectedTaskId}
+              />
+            </div>
+            <div className="flex-1 flex items-center justify-center bg-gray-50 text-gray-400 text-sm">
+              Select a task to view details
             </div>
           </div>
-        </header>
-
-        <div className="flex-1 overflow-hidden bg-white">
-          {viewMode === 'list' ? (
-              <TaskList
-                  tasks={tasks}
-                  onAddTask={handleAddTask}
-                  onUpdateTask={handleUpdateTask}
-                  onDeleteTask={handleDeleteTask}
-                  selectedTaskId={selectedTaskId}
-                  onSelectTask={setSelectedTaskId}
-              />
-          ) : (
-              <GanttChart
-                  tasks={tasks}
-                  selectedTaskId={selectedTaskId}
-                  onSelectTask={setSelectedTaskId}
-                  onUpdateTask={handleUpdateTask}
-              />
-          )}
-        </div>
+        ) : (
+          <GanttChart
+            tasks={tasks}
+            selectedTaskId={selectedTaskId}
+            onSelectTask={setSelectedTaskId}
+            onUpdateTask={handleUpdateTask}
+          />
+        )}
       </div>
+    </div>
   );
 }
