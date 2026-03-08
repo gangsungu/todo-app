@@ -1,7 +1,6 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, differenceInDays, addDays } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { ko } from 'date-fns/locale';
 import type { Task } from '../types';
 
 interface GanttChartProps {

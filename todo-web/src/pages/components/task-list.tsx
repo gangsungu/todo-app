@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Calendar, ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
 import type { Task } from '../types';
 
 interface TaskListProps {
@@ -106,8 +105,6 @@ export function TaskList({
     const children = taskHierarchy.getChildren(task.id);
     const hasChildren = children.length > 0;
     const isExpanded = expandedTasks.has(task.id);
-    const { progress: calculatedProgress, totalWeight } = calculateWeightedProgress(task.id);
-    const isWeightValid = !hasChildren || totalWeight === 100;
 
     return (
       <div key={task.id}>
