@@ -1,0 +1,18 @@
+name: gantodo
+
+services:
+  mysql-mvp:
+    image: mysql:8.0
+    container_name: mysql-mvp
+    ports:
+      - "3308:3306"  # 기존 3306, 3307과 안 겹치게
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: gantodo_db
+      MYSQL_USER: gantodo
+      MYSQL_PASSWORD: gantodo1234
+    volumes:
+      - mysql-mvp-data:/var/lib/mysql
+
+volumes:
+  mysql-mvp-data:
