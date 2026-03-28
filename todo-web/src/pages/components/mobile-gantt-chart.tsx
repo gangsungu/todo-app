@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, differenceInDays } from 'date-fns';
+import { differenceInDays, format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Task } from '../types';
+import { calculateWeightedProgress } from '../utils/task-progress';
+import { useTaskTree } from '../hooks/use-task-tree';
+import { useMonthNavigation } from '../hooks/use-month-navigation';
 
 interface MobileGanttChartProps {
   tasks: Task[];
@@ -11,48 +13,8 @@ interface MobileGanttChartProps {
 }
 
 export function MobileGanttChart({ tasks, selectedTaskId, onSelectTask }: MobileGanttChartProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-
-  const taskHierarchy = useMemo(() => {
-    const rootTasks = tasks.filter(task => !task.parentId);
-    const getChildren = (parentId: string): Task[] => {
-      return tasks.filter(task => task.parentId === parentId);
-    };
-
-    const flattenedTasks: Array<{ task: Task; level: number }> = [];
-    const flatten = (task: Task, level: number) => {
-      flattenedTasks.push({ task, level });
-      const children = getChildren(task.id);
-      children.forEach(child => flatten(child, level + 1));
-    };
-
-    rootTasks.forEach(task => flatten(task, 0));
-
-    return { flattenedTasks, getChildren };
-  }, [tasks]);
-
-  const { startDate, endDate, days } = useMemo(() => {
-    const start = startOfMonth(currentMonth);
-    const end = endOfMonth(currentMonth);
-    const daysArray = eachDayOfInterval({ start, end });
-    return { startDate: start, endDate: end, days: daysArray };
-  }, [currentMonth]);
-
-  const previousMonth = () => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(newDate.getMonth() - 1);
-    setCurrentMonth(newDate);
-  };
-
-  const nextMonth = () => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(newDate.getMonth() + 1);
-    setCurrentMonth(newDate);
-  };
-
-  const todayMonth = () => {
-    setCurrentMonth(new Date());
-  };
+  const { currentMonth, startDate, endDate, days, previousMonth, nextMonth, todayMonth } = useMonthNavigation();
+  const taskHierarchy = useTaskTree(tasks);
 
   const getTaskPosition = (task: Task) => {
     const dayWidth = 32;
@@ -75,22 +37,6 @@ export function MobileGanttChart({ tasks, selectedTaskId, onSelectTask }: Mobile
         date.getMonth() === today.getMonth() &&
         date.getFullYear() === today.getFullYear()
     );
-  };
-
-  const calculateWeightedProgress = (taskId: string): number => {
-    const children = taskHierarchy.getChildren(taskId);
-    if (children.length === 0) {
-      const task = tasks.find(t => t.id === taskId);
-      return task?.progress || 0;
-    }
-
-    const weightedProgress = children.reduce((sum, child) => {
-      const childWeight = child.weight || 0;
-      const childProgress = child.progress || 0;
-      return sum + (childProgress * childWeight / 100);
-    }, 0);
-
-    return Math.round(weightedProgress);
   };
 
   return (
@@ -174,7 +120,9 @@ export function MobileGanttChart({ tasks, selectedTaskId, onSelectTask }: Mobile
 
                   const children = taskHierarchy.getChildren(task.id);
                   const hasChildren = children.length > 0;
-                  const calculatedProgress = hasChildren ? calculateWeightedProgress(task.id) : task.progress;
+                  const { progress: calculatedProgress } = hasChildren
+                    ? calculateWeightedProgress(task.id, tasks, taskHierarchy.getChildren)
+                    : { progress: task.progress };
 
                   return (
                       <div

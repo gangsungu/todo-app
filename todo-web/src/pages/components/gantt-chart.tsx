@@ -1,7 +1,10 @@
-import { useMemo, useRef, useEffect, useState } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, differenceInDays, addDays } from 'date-fns';
+import { useRef, useEffect, useState } from 'react';
+import { format, differenceInDays, addDays } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Task } from '../types';
+import { calculateWeightedProgress } from '../utils/task-progress';
+import { useTaskTree } from '../hooks/use-task-tree';
+import { useMonthNavigation } from '../hooks/use-month-navigation';
 
 interface GanttChartProps {
   tasks: Task[];
@@ -11,7 +14,7 @@ interface GanttChartProps {
 }
 
 export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }: GanttChartProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const { currentMonth, startDate, endDate, days, previousMonth, nextMonth, todayMonth } = useMonthNavigation();
   const [dragState, setDragState] = useState<{
     taskId: string;
     type: 'move' | 'resize-start' | 'resize-end';
@@ -22,46 +25,7 @@ export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const taskHierarchy = useMemo(() => {
-    const rootTasks = tasks.filter(task => !task.parentId);
-    const getChildren = (parentId: string): Task[] => {
-      return tasks.filter(task => task.parentId === parentId);
-    };
-
-    const flattenedTasks: Array<{ task: Task; level: number }> = [];
-    const flatten = (task: Task, level: number) => {
-      flattenedTasks.push({ task, level });
-      const children = getChildren(task.id);
-      children.forEach(child => flatten(child, level + 1));
-    };
-
-    rootTasks.forEach(task => flatten(task, 0));
-
-    return { flattenedTasks, getChildren };
-  }, [tasks]);
-
-  const { startDate, endDate, days } = useMemo(() => {
-    const start = startOfMonth(currentMonth);
-    const end = endOfMonth(currentMonth);
-    const daysArray = eachDayOfInterval({ start, end });
-    return { startDate: start, endDate: end, days: daysArray };
-  }, [currentMonth]);
-
-  const previousMonth = () => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(newDate.getMonth() - 1);
-    setCurrentMonth(newDate);
-  };
-
-  const nextMonth = () => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(newDate.getMonth() + 1);
-    setCurrentMonth(newDate);
-  };
-
-  const todayMonth = () => {
-    setCurrentMonth(new Date());
-  };
+  const taskHierarchy = useTaskTree(tasks);
 
   const getTaskPosition = (task: Task) => {
     const dayWidth = 48;
@@ -152,22 +116,6 @@ export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }
     );
   };
 
-  const calculateWeightedProgress = (taskId: string): number => {
-    const children = taskHierarchy.getChildren(taskId);
-    if (children.length === 0) {
-      const task = tasks.find(t => t.id === taskId);
-      return task?.progress || 0;
-    }
-
-    const weightedProgress = children.reduce((sum, child) => {
-      const childWeight = child.weight || 0;
-      const childProgress = child.progress || 0;
-      return sum + (childProgress * childWeight / 100);
-    }, 0);
-
-    return Math.round(weightedProgress);
-  };
-
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200">
@@ -250,7 +198,9 @@ export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }
 
                 const children = taskHierarchy.getChildren(task.id);
                 const hasChildren = children.length > 0;
-                const calculatedProgress = hasChildren ? calculateWeightedProgress(task.id) : task.progress;
+                const { progress: calculatedProgress } = hasChildren
+                  ? calculateWeightedProgress(task.id, tasks, taskHierarchy.getChildren)
+                  : { progress: task.progress };
 
                 return (
                   <div

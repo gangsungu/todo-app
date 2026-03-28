@@ -1,8 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Plus, Trash2, Calendar, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import type { Task } from '../types';
+import { calculateWeightedProgress } from '../utils/task-progress';
+import { MOBILE_TASK_DEFAULTS } from '../utils/task-defaults';
+import { useTaskTree } from '../hooks/use-task-tree';
 
 interface MobileTaskListProps {
   tasks: Task[];
@@ -27,44 +30,21 @@ export function MobileTaskList({
   const [newTaskWeight, setNewTaskWeight] = useState(100);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
 
-  const taskHierarchy = useMemo(() => {
-    const rootTasks = tasks.filter(task => !task.parentId);
-    const getChildren = (parentId: string): Task[] => {
-      return tasks.filter(task => task.parentId === parentId);
-    };
-    return { rootTasks, getChildren };
-  }, [tasks]);
-
-  const calculateWeightedProgress = (taskId: string): { progress: number; totalWeight: number } => {
-    const children = taskHierarchy.getChildren(taskId);
-    if (children.length === 0) {
-      const task = tasks.find(t => t.id === taskId);
-      return { progress: task?.progress || 0, totalWeight: 100 };
-    }
-
-    const totalWeight = children.reduce((sum, child) => sum + (child.weight || 0), 0);
-    const weightedProgress = children.reduce((sum, child) => {
-      const childWeight = child.weight || 0;
-      const childProgress = child.progress || 0;
-      return sum + (childProgress * childWeight / 100);
-    }, 0);
-
-    return { progress: Math.round(weightedProgress), totalWeight };
-  };
+  const taskHierarchy = useTaskTree(tasks);
 
   const handleAddTask = (parentId?: string) => {
     if (newTaskName.trim()) {
       const today = new Date();
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + MOBILE_TASK_DEFAULTS.defaultDurationDays);
 
       onAddTask({
         name: newTaskName,
         startDate: today,
-        endDate: tomorrow,
+        endDate,
         progress: 0,
         status: 'todo',
-        color: '#3b82f6',
+        color: MOBILE_TASK_DEFAULTS.color,
         parentId,
         weight: parentId ? newTaskWeight : undefined,
       });
@@ -117,7 +97,7 @@ export function MobileTaskList({
     const children = taskHierarchy.getChildren(task.id);
     const hasChildren = children.length > 0;
     const isExpanded = expandedTasks.has(task.id);
-    const { progress: calculatedProgress, totalWeight } = calculateWeightedProgress(task.id);
+    const { progress: calculatedProgress, totalWeight } = calculateWeightedProgress(task.id, tasks, taskHierarchy.getChildren);
     const isWeightValid = !hasChildren || totalWeight === 100;
 
     return (
