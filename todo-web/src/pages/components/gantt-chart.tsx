@@ -2,6 +2,7 @@ import { useMemo, useRef, useEffect, useState } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, differenceInDays, addDays } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Task } from '../types';
+import { calculateWeightedProgress } from '../utils/task-progress';
 
 interface GanttChartProps {
   tasks: Task[];
@@ -152,22 +153,6 @@ export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }
     );
   };
 
-  const calculateWeightedProgress = (taskId: string): number => {
-    const children = taskHierarchy.getChildren(taskId);
-    if (children.length === 0) {
-      const task = tasks.find(t => t.id === taskId);
-      return task?.progress || 0;
-    }
-
-    const weightedProgress = children.reduce((sum, child) => {
-      const childWeight = child.weight || 0;
-      const childProgress = child.progress || 0;
-      return sum + (childProgress * childWeight / 100);
-    }, 0);
-
-    return Math.round(weightedProgress);
-  };
-
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200">
@@ -250,7 +235,9 @@ export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }
 
                 const children = taskHierarchy.getChildren(task.id);
                 const hasChildren = children.length > 0;
-                const calculatedProgress = hasChildren ? calculateWeightedProgress(task.id) : task.progress;
+                const { progress: calculatedProgress } = hasChildren
+                  ? calculateWeightedProgress(task.id, tasks, taskHierarchy.getChildren)
+                  : { progress: task.progress };
 
                 return (
                   <div
