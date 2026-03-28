@@ -3,6 +3,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, differenceInDays }
 import { ko } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Task } from '../types';
+import { calculateWeightedProgress } from '../utils/task-progress';
 
 interface MobileGanttChartProps {
   tasks: Task[];
@@ -75,22 +76,6 @@ export function MobileGanttChart({ tasks, selectedTaskId, onSelectTask }: Mobile
         date.getMonth() === today.getMonth() &&
         date.getFullYear() === today.getFullYear()
     );
-  };
-
-  const calculateWeightedProgress = (taskId: string): number => {
-    const children = taskHierarchy.getChildren(taskId);
-    if (children.length === 0) {
-      const task = tasks.find(t => t.id === taskId);
-      return task?.progress || 0;
-    }
-
-    const weightedProgress = children.reduce((sum, child) => {
-      const childWeight = child.weight || 0;
-      const childProgress = child.progress || 0;
-      return sum + (childProgress * childWeight / 100);
-    }, 0);
-
-    return Math.round(weightedProgress);
   };
 
   return (
@@ -174,7 +159,9 @@ export function MobileGanttChart({ tasks, selectedTaskId, onSelectTask }: Mobile
 
                   const children = taskHierarchy.getChildren(task.id);
                   const hasChildren = children.length > 0;
-                  const calculatedProgress = hasChildren ? calculateWeightedProgress(task.id) : task.progress;
+                  const { progress: calculatedProgress } = hasChildren
+                    ? calculateWeightedProgress(task.id, tasks, taskHierarchy.getChildren)
+                    : { progress: task.progress };
 
                   return (
                       <div
