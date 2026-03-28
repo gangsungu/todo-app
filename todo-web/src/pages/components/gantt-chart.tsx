@@ -1,9 +1,10 @@
-import { useMemo, useRef, useEffect, useState } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, differenceInDays, addDays } from 'date-fns';
+import { useRef, useEffect, useState } from 'react';
+import { format, differenceInDays, addDays } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Task } from '../types';
 import { calculateWeightedProgress } from '../utils/task-progress';
 import { useTaskTree } from '../hooks/use-task-tree';
+import { useMonthNavigation } from '../hooks/use-month-navigation';
 
 interface GanttChartProps {
   tasks: Task[];
@@ -13,7 +14,7 @@ interface GanttChartProps {
 }
 
 export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }: GanttChartProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const { currentMonth, startDate, endDate, days, previousMonth, nextMonth, todayMonth } = useMonthNavigation();
   const [dragState, setDragState] = useState<{
     taskId: string;
     type: 'move' | 'resize-start' | 'resize-end';
@@ -25,29 +26,6 @@ export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const taskHierarchy = useTaskTree(tasks);
-
-  const { startDate, endDate, days } = useMemo(() => {
-    const start = startOfMonth(currentMonth);
-    const end = endOfMonth(currentMonth);
-    const daysArray = eachDayOfInterval({ start, end });
-    return { startDate: start, endDate: end, days: daysArray };
-  }, [currentMonth]);
-
-  const previousMonth = () => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(newDate.getMonth() - 1);
-    setCurrentMonth(newDate);
-  };
-
-  const nextMonth = () => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(newDate.getMonth() + 1);
-    setCurrentMonth(newDate);
-  };
-
-  const todayMonth = () => {
-    setCurrentMonth(new Date());
-  };
 
   const getTaskPosition = (task: Task) => {
     const dayWidth = 48;

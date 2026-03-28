@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, differenceInDays } from 'date-fns';
+import { differenceInDays, format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Task } from '../types';
 import { calculateWeightedProgress } from '../utils/task-progress';
 import { useTaskTree } from '../hooks/use-task-tree';
+import { useMonthNavigation } from '../hooks/use-month-navigation';
 
 interface MobileGanttChartProps {
   tasks: Task[];
@@ -13,32 +13,8 @@ interface MobileGanttChartProps {
 }
 
 export function MobileGanttChart({ tasks, selectedTaskId, onSelectTask }: MobileGanttChartProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-
+  const { currentMonth, startDate, endDate, days, previousMonth, nextMonth, todayMonth } = useMonthNavigation();
   const taskHierarchy = useTaskTree(tasks);
-
-  const { startDate, endDate, days } = useMemo(() => {
-    const start = startOfMonth(currentMonth);
-    const end = endOfMonth(currentMonth);
-    const daysArray = eachDayOfInterval({ start, end });
-    return { startDate: start, endDate: end, days: daysArray };
-  }, [currentMonth]);
-
-  const previousMonth = () => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(newDate.getMonth() - 1);
-    setCurrentMonth(newDate);
-  };
-
-  const nextMonth = () => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(newDate.getMonth() + 1);
-    setCurrentMonth(newDate);
-  };
-
-  const todayMonth = () => {
-    setCurrentMonth(new Date());
-  };
 
   const getTaskPosition = (task: Task) => {
     const dayWidth = 32;
