@@ -3,6 +3,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, differenceInDays, 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Task } from '../types';
 import { calculateWeightedProgress } from '../utils/task-progress';
+import { useTaskTree } from '../hooks/use-task-tree';
 
 interface GanttChartProps {
   tasks: Task[];
@@ -23,23 +24,7 @@ export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const taskHierarchy = useMemo(() => {
-    const rootTasks = tasks.filter(task => !task.parentId);
-    const getChildren = (parentId: string): Task[] => {
-      return tasks.filter(task => task.parentId === parentId);
-    };
-
-    const flattenedTasks: Array<{ task: Task; level: number }> = [];
-    const flatten = (task: Task, level: number) => {
-      flattenedTasks.push({ task, level });
-      const children = getChildren(task.id);
-      children.forEach(child => flatten(child, level + 1));
-    };
-
-    rootTasks.forEach(task => flatten(task, 0));
-
-    return { flattenedTasks, getChildren };
-  }, [tasks]);
+  const taskHierarchy = useTaskTree(tasks);
 
   const { startDate, endDate, days } = useMemo(() => {
     const start = startOfMonth(currentMonth);
