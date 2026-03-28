@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Plus, Trash2, Calendar, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import type { Task } from '../types';
 import { calculateWeightedProgress } from '../utils/task-progress';
+import { useTaskTree } from '../hooks/use-task-tree';
 
 interface MobileTaskListProps {
   tasks: Task[];
@@ -28,13 +29,7 @@ export function MobileTaskList({
   const [newTaskWeight, setNewTaskWeight] = useState(100);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
 
-  const taskHierarchy = useMemo(() => {
-    const rootTasks = tasks.filter(task => !task.parentId);
-    const getChildren = (parentId: string): Task[] => {
-      return tasks.filter(task => task.parentId === parentId);
-    };
-    return { rootTasks, getChildren };
-  }, [tasks]);
+  const taskHierarchy = useTaskTree(tasks);
 
   const handleAddTask = (parentId?: string) => {
     if (newTaskName.trim()) {
