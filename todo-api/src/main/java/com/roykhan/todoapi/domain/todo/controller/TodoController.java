@@ -4,6 +4,7 @@ import com.roykhan.todoapi.domain.todo.dto.CreateTodoRequest;
 import com.roykhan.todoapi.domain.todo.dto.TodoCompletedUpdateRequest;
 import com.roykhan.todoapi.domain.todo.dto.TodoResponse;
 import com.roykhan.todoapi.domain.todo.dto.TodoTreeResponse;
+import com.roykhan.todoapi.domain.todo.dto.UpdateTodoRequest;
 import com.roykhan.todoapi.domain.todo.service.TodoQueryService;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -26,6 +27,11 @@ public class TodoController {
 
     private final TodoQueryService todoQueryService;
 
+    @GetMapping
+    public List<TodoResponse> getAll() {
+        return todoQueryService.getAll();
+    }
+
     @GetMapping("/tree")
     public List<TodoTreeResponse> tree() {
         return todoQueryService.getTree();
@@ -46,6 +52,12 @@ public class TodoController {
     @PostMapping
     public ResponseEntity<TodoResponse> create(@RequestBody CreateTodoRequest request) {
         TodoResponse response = todoQueryService.create(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<TodoResponse> update(@PathVariable Long id, @RequestBody UpdateTodoRequest request) {
+        TodoResponse response = todoQueryService.update(id, request);
         return ResponseEntity.ok(response);
     }
 }

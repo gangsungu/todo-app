@@ -5,129 +5,30 @@ import { MobileTaskList } from './components/mobile-task-list';
 import { MobileGanttChart } from './components/mobile-gantt-chart';
 import { ListTodo, BarChart3 } from 'lucide-react';
 import { useMediaQuery } from './hooks/use-media-query';
-import type { Task } from './types';
-
-const SAMPLE_TASKS: Task[] = [
-  {
-    id: '1',
-    name: 'Product Design Phase',
-    startDate: new Date(2026, 1, 3),
-    endDate: new Date(2026, 1, 10),
-    progress: 0,
-    status: 'in-progress',
-    color: '#4F46E5',
-  },
-  {
-    id: '1-1',
-    name: 'User research & requirements',
-    startDate: new Date(2026, 1, 3),
-    endDate: new Date(2026, 1, 5),
-    progress: 100,
-    status: 'completed',
-    color: '#4F46E5',
-    parentId: '1',
-    weight: 50,
-  },
-  {
-    id: '1-2',
-    name: 'Define timeline & resources',
-    startDate: new Date(2026, 1, 6),
-    endDate: new Date(2026, 1, 8),
-    progress: 0,
-    status: 'todo',
-    color: '#4F46E5',
-    parentId: '1',
-    weight: 30,
-  },
-  {
-    id: '1-3',
-    name: 'Resource allocation',
-    startDate: new Date(2026, 1, 8),
-    endDate: new Date(2026, 1, 10),
-    progress: 0,
-    status: 'todo',
-    color: '#4F46E5',
-    parentId: '1',
-    weight: 20,
-  },
-  {
-    id: '2',
-    name: 'UI/UX Design',
-    startDate: new Date(2026, 1, 11),
-    endDate: new Date(2026, 1, 18),
-    progress: 0,
-    status: 'todo',
-    color: '#4F46E5',
-  },
-  {
-    id: '2-1',
-    name: 'Wireframe creation',
-    startDate: new Date(2026, 1, 11),
-    endDate: new Date(2026, 1, 13),
-    progress: 0,
-    status: 'todo',
-    color: '#4F46E5',
-    parentId: '2',
-    weight: 30,
-  },
-  {
-    id: '2-2',
-    name: 'Design system setup',
-    startDate: new Date(2026, 1, 14),
-    endDate: new Date(2026, 1, 16),
-    progress: 0,
-    status: 'todo',
-    color: '#4F46E5',
-    parentId: '2',
-    weight: 50,
-  },
-  {
-    id: '2-3',
-    name: 'Final design review',
-    startDate: new Date(2026, 1, 17),
-    endDate: new Date(2026, 1, 18),
-    progress: 0,
-    status: 'todo',
-    color: '#4F46E5',
-    parentId: '2',
-    weight: 20,
-  },
-  {
-    id: '3',
-    name: 'Frontend Development',
-    startDate: new Date(2026, 1, 19),
-    endDate: new Date(2026, 1, 28),
-    progress: 0,
-    status: 'todo',
-    color: '#4F46E5',
-  },
-];
+import { useTodos } from './hooks/use-todos';
 
 export default function App() {
-  const [tasks, setTasks] = useState<Task[]>(SAMPLE_TASKS);
+  const { tasks, loading, error, handleAddTask, handleUpdateTask, handleDeleteTask } = useTodos();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'gantt'>('gantt');
 
   const isMobile = useMediaQuery('(max-width: 768px)');
 
-  const handleAddTask = (newTask: Omit<Task, 'id'>) => {
-    const task: Task = {
-      ...newTask,
-      id: Date.now().toString(),
-    };
-    setTasks([...tasks, task]);
-  };
+  if (loading) {
+    return (
+      <div className="size-full flex items-center justify-center text-gray-400">
+        불러오는 중...
+      </div>
+    );
+  }
 
-  const handleUpdateTask = (id: string, updates: Partial<Task>) => {
-    setTasks(tasks.map((task) => (task.id === id ? { ...task, ...updates } : task)));
-  };
-
-  const handleDeleteTask = (id: string) => {
-    setTasks(tasks.filter((task) => task.id !== id));
-    if (selectedTaskId === id) {
-      setSelectedTaskId(null);
-    }
-  };
+  if (error) {
+    return (
+      <div className="size-full flex items-center justify-center text-red-500">
+        오류: {error}
+      </div>
+    );
+  }
 
   if (isMobile) {
     return (
@@ -155,15 +56,12 @@ export default function App() {
           )}
         </div>
 
-        {/* Bottom Navigation */}
         <div className="bg-white border-t border-gray-200">
           <div className="flex items-center">
             <button
               onClick={() => setViewMode('list')}
               className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${
-                viewMode === 'list'
-                  ? 'text-indigo-600'
-                  : 'text-gray-400'
+                viewMode === 'list' ? 'text-indigo-600' : 'text-gray-400'
               }`}
             >
               <ListTodo className="w-5 h-5" />
@@ -172,9 +70,7 @@ export default function App() {
             <button
               onClick={() => setViewMode('gantt')}
               className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${
-                viewMode === 'gantt'
-                  ? 'text-indigo-600'
-                  : 'text-gray-400'
+                viewMode === 'gantt' ? 'text-indigo-600' : 'text-gray-400'
               }`}
             >
               <BarChart3 className="w-5 h-5" />
