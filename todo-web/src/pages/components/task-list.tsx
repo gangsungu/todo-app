@@ -3,6 +3,7 @@ import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Task } from '../types';
 import { calculateWeightedProgress } from '../utils/task-progress';
+import { DESKTOP_TASK_DEFAULTS } from '../utils/task-defaults';
 import { useTaskTree } from '../hooks/use-task-tree';
 
 interface TaskListProps {
@@ -33,16 +34,16 @@ export function TaskList({
   const handleAddTask = (parentId?: string) => {
     if (newTaskName.trim()) {
       const today = new Date();
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 7);
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + DESKTOP_TASK_DEFAULTS.defaultDurationDays);
 
       onAddTask({
         name: newTaskName,
         startDate: today,
-        endDate: tomorrow,
+        endDate,
         progress: 0,
         status: 'todo',
-        color: '#4F46E5',
+        color: DESKTOP_TASK_DEFAULTS.color,
         parentId,
         weight: parentId ? newTaskWeight : undefined,
       });

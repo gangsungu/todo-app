@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import type { Task } from '../types';
 import { calculateWeightedProgress } from '../utils/task-progress';
+import { MOBILE_TASK_DEFAULTS } from '../utils/task-defaults';
 import { useTaskTree } from '../hooks/use-task-tree';
 
 interface MobileTaskListProps {
@@ -34,16 +35,16 @@ export function MobileTaskList({
   const handleAddTask = (parentId?: string) => {
     if (newTaskName.trim()) {
       const today = new Date();
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + MOBILE_TASK_DEFAULTS.defaultDurationDays);
 
       onAddTask({
         name: newTaskName,
         startDate: today,
-        endDate: tomorrow,
+        endDate,
         progress: 0,
         status: 'todo',
-        color: '#3b82f6',
+        color: MOBILE_TASK_DEFAULTS.color,
         parentId,
         weight: parentId ? newTaskWeight : undefined,
       });
