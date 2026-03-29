@@ -27,19 +27,31 @@ export function TaskList({
   const [addingSubtaskToId, setAddingSubtaskToId] = useState<string | null>(null);
   const [newTaskName, setNewTaskName] = useState('');
   const [newTaskWeight, setNewTaskWeight] = useState(100);
+  const [newTaskStartDate, setNewTaskStartDate] = useState('');
+  const [newTaskEndDate, setNewTaskEndDate] = useState('');
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
 
   const taskHierarchy = useTaskTree(tasks);
 
+  const getDefaultDates = () => {
+    const today = new Date();
+    const defaultEnd = new Date();
+    defaultEnd.setDate(defaultEnd.getDate() + DESKTOP_TASK_DEFAULTS.defaultDurationDays);
+    return {
+      start: format(today, 'yyyy-MM-dd'),
+      end: format(defaultEnd, 'yyyy-MM-dd'),
+    };
+  };
+
   const handleAddTask = (parentId?: string) => {
     if (newTaskName.trim()) {
-      const today = new Date();
-      const endDate = new Date(today);
-      endDate.setDate(endDate.getDate() + DESKTOP_TASK_DEFAULTS.defaultDurationDays);
+      const defaults = getDefaultDates();
+      const startDate = new Date((newTaskStartDate || defaults.start) + 'T00:00:00');
+      const endDate = new Date((newTaskEndDate || defaults.end) + 'T00:00:00');
 
       onAddTask({
         name: newTaskName,
-        startDate: today,
+        startDate,
         endDate,
         progress: 0,
         status: 'todo',
@@ -49,6 +61,8 @@ export function TaskList({
       });
       setNewTaskName('');
       setNewTaskWeight(100);
+      setNewTaskStartDate('');
+      setNewTaskEndDate('');
       setIsAddingTask(false);
       setAddingSubtaskToId(null);
 
@@ -137,6 +151,9 @@ export function TaskList({
                 const currentTotalWeight = children.reduce((sum, child) => sum + (child.weight || 0), 0);
                 const suggestedWeight = Math.max(0, 100 - currentTotalWeight);
                 setNewTaskWeight(suggestedWeight);
+                const defaults = getDefaultDates();
+                setNewTaskStartDate(defaults.start);
+                setNewTaskEndDate(defaults.end);
               }}
               className="p-1 hover:bg-gray-200 rounded flex-shrink-0"
             >
@@ -166,12 +183,29 @@ export function TaskList({
                   setAddingSubtaskToId(null);
                   setNewTaskName('');
                   setNewTaskWeight(100);
+                  setNewTaskStartDate('');
+                  setNewTaskEndDate('');
                 }
               }}
               placeholder="Task name"
               className="w-full px-2 py-1 text-sm border-0 bg-transparent focus:outline-none"
               autoFocus
             />
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                type="date"
+                value={newTaskStartDate}
+                onChange={(e) => setNewTaskStartDate(e.target.value)}
+                className="px-1 py-0.5 text-xs border border-gray-200 rounded focus:outline-none focus:border-indigo-500"
+              />
+              <span className="text-xs text-gray-400">-</span>
+              <input
+                type="date"
+                value={newTaskEndDate}
+                onChange={(e) => setNewTaskEndDate(e.target.value)}
+                className="px-1 py-0.5 text-xs border border-gray-200 rounded focus:outline-none focus:border-indigo-500"
+              />
+            </div>
             <div className="flex items-center gap-2 mt-2">
               <input
                 type="number"
@@ -194,6 +228,8 @@ export function TaskList({
                   setAddingSubtaskToId(null);
                   setNewTaskName('');
                   setNewTaskWeight(100);
+                  setNewTaskStartDate('');
+                  setNewTaskEndDate('');
                 }}
                 className="px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded"
               >
@@ -213,7 +249,12 @@ export function TaskList({
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
         <h2 className="text-sm font-medium text-gray-900">Tasks</h2>
         <button
-          onClick={() => setIsAddingTask(true)}
+          onClick={() => {
+            const defaults = getDefaultDates();
+            setNewTaskStartDate(defaults.start);
+            setNewTaskEndDate(defaults.end);
+            setIsAddingTask(true);
+          }}
           className="p-1 hover:bg-gray-100 rounded transition-colors"
         >
           <Plus className="w-4 h-4 text-gray-500" />
@@ -232,12 +273,29 @@ export function TaskList({
                 if (e.key === 'Escape') {
                   setIsAddingTask(false);
                   setNewTaskName('');
+                  setNewTaskStartDate('');
+                  setNewTaskEndDate('');
                 }
               }}
               placeholder="Task name"
               className="w-full px-2 py-1 text-sm border-0 bg-transparent focus:outline-none"
               autoFocus
             />
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                type="date"
+                value={newTaskStartDate}
+                onChange={(e) => setNewTaskStartDate(e.target.value)}
+                className="px-1 py-0.5 text-xs border border-gray-200 rounded focus:outline-none focus:border-indigo-500"
+              />
+              <span className="text-xs text-gray-400">-</span>
+              <input
+                type="date"
+                value={newTaskEndDate}
+                onChange={(e) => setNewTaskEndDate(e.target.value)}
+                className="px-1 py-0.5 text-xs border border-gray-200 rounded focus:outline-none focus:border-indigo-500"
+              />
+            </div>
             <div className="flex items-center gap-2 mt-2">
               <button
                 onClick={() => handleAddTask()}
@@ -249,6 +307,8 @@ export function TaskList({
                 onClick={() => {
                   setIsAddingTask(false);
                   setNewTaskName('');
+                  setNewTaskStartDate('');
+                  setNewTaskEndDate('');
                 }}
                 className="px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded"
               >
@@ -319,8 +379,20 @@ export function TaskList({
 
                 <div>
                   <div className="text-xs text-gray-500 mb-1">Date range</div>
-                  <div className="text-xs text-gray-700">
-                    {format(task.startDate, 'MMM d')} - {format(task.endDate, 'MMM d, yyyy')}
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="date"
+                      value={format(task.startDate, 'yyyy-MM-dd')}
+                      onChange={(e) => onUpdateTask(task.id, { startDate: new Date(e.target.value + 'T00:00:00') })}
+                      className="text-xs border border-gray-200 rounded px-1 py-0.5 focus:outline-none focus:border-indigo-500"
+                    />
+                    <span className="text-xs text-gray-400">-</span>
+                    <input
+                      type="date"
+                      value={format(task.endDate, 'yyyy-MM-dd')}
+                      onChange={(e) => onUpdateTask(task.id, { endDate: new Date(e.target.value + 'T00:00:00') })}
+                      className="text-xs border border-gray-200 rounded px-1 py-0.5 focus:outline-none focus:border-indigo-500"
+                    />
                   </div>
                 </div>
 
