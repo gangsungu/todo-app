@@ -137,7 +137,7 @@ export function MobileGanttChart({ tasks, selectedTaskId, onSelectTask }: Mobile
                           onClick={() => onSelectTask(task.id === selectedTaskId ? null : task.id)}
                       >
                         <div
-                            className={`relative h-full rounded-lg transition-all ${
+                            className={`relative h-full rounded-lg transition-all select-none ${
                                 selectedTaskId === task.id
                                     ? 'ring-2 ring-blue-500 ring-offset-2'
                                     : 'shadow-sm'

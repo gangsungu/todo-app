@@ -215,7 +215,7 @@ export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }
                     onClick={() => onSelectTask(task.id === selectedTaskId ? null : task.id)}
                   >
                     <div
-                      className={`relative h-full rounded transition-all group ${
+                      className={`relative h-full rounded transition-all group select-none ${
                         hasChildren ? 'cursor-default' : 'cursor-move'
                       } ${
                         selectedTaskId === task.id
