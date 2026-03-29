@@ -127,7 +127,7 @@ export function MobileGanttChart({ tasks, selectedTaskId, onSelectTask }: Mobile
                   return (
                       <div
                           key={task.id}
-                          className="absolute"
+                          className="absolute select-none cursor-pointer"
                           style={{
                             top: `${index * 70 + 8}px`,
                             left: `${position.left + level * 12}px`,
@@ -148,7 +148,7 @@ export function MobileGanttChart({ tasks, selectedTaskId, onSelectTask }: Mobile
                               borderStyle: hasChildren ? 'dashed' : 'solid',
                             }}
                         >
-                          <div className="px-2 py-2 h-full flex flex-col justify-center">
+                          <div className="px-2 py-2 h-full flex flex-col justify-center pointer-events-none">
                             <div className="flex items-center gap-1 mb-1">
                               {level > 0 && (
                                   <span className="text-xs text-gray-400">└</span>
