@@ -205,7 +205,7 @@ export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }
                 return (
                   <div
                     key={task.id}
-                    className="absolute"
+                    className={`absolute select-none ${hasChildren ? 'cursor-default' : 'cursor-move'}`}
                     style={{
                       top: `${index * 48 + 12}px`,
                       left: `${position.left + level * 16}px`,
@@ -215,9 +215,7 @@ export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }
                     onClick={() => onSelectTask(task.id === selectedTaskId ? null : task.id)}
                   >
                     <div
-                      className={`relative h-full rounded transition-all group select-none ${
-                        hasChildren ? 'cursor-default' : 'cursor-move'
-                      } ${
+                      className={`relative h-full rounded transition-all group ${
                         selectedTaskId === task.id
                           ? 'ring-2 ring-indigo-500 ring-offset-1'
                           : ''

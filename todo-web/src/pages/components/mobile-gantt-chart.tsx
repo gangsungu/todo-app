@@ -127,7 +127,7 @@ export function MobileGanttChart({ tasks, selectedTaskId, onSelectTask }: Mobile
                   return (
                       <div
                           key={task.id}
-                          className="absolute"
+                          className="absolute select-none cursor-pointer"
                           style={{
                             top: `${index * 70 + 8}px`,
                             left: `${position.left + level * 12}px`,
@@ -137,7 +137,7 @@ export function MobileGanttChart({ tasks, selectedTaskId, onSelectTask }: Mobile
                           onClick={() => onSelectTask(task.id === selectedTaskId ? null : task.id)}
                       >
                         <div
-                            className={`relative h-full rounded-lg transition-all select-none ${
+                            className={`relative h-full rounded-lg transition-all ${
                                 selectedTaskId === task.id
                                     ? 'ring-2 ring-blue-500 ring-offset-2'
                                     : 'shadow-sm'
