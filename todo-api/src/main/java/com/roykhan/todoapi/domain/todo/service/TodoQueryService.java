@@ -4,6 +4,7 @@ import com.roykhan.todoapi.domain.todo.Todo;
 import com.roykhan.todoapi.domain.todo.dto.CreateTodoRequest;
 import com.roykhan.todoapi.domain.todo.dto.TodoResponse;
 import com.roykhan.todoapi.domain.todo.dto.TodoTreeResponse;
+import com.roykhan.todoapi.domain.todo.dto.UpdateTodoRequest;
 import com.roykhan.todoapi.domain.todo.repository.TodoRepository;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -21,6 +22,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class TodoQueryService {
 
     private final TodoRepository todoRepository;
+
+    public List<TodoResponse> getAll() {
+        return todoRepository.findAllForTree().stream()
+            .map(TodoResponse::from)
+            .toList();
+    }
 
     public List<TodoTreeResponse> getTree() {
         List<Todo> todos = todoRepository.findAllForTree();
@@ -111,8 +118,26 @@ public class TodoQueryService {
 
         int sortOrder = request.sortOrder() != null ? request.sortOrder() : 0;
 
-        Todo todo = Todo.create(request.title(), parent, sortOrder);
+        Todo todo = Todo.create(
+            request.title(), parent, sortOrder,
+            request.status(), request.progress(),
+            request.startDate(), request.endDate(),
+            request.color(), request.weight()
+        );
         todoRepository.save(todo);
+
+        return TodoResponse.from(todo);
+    }
+
+    public TodoResponse update(Long id, UpdateTodoRequest request) {
+        Todo todo = todoRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Todo not found: " + id));
+
+        todo.update(
+            request.title(), request.status(), request.progress(),
+            request.startDate(), request.endDate(),
+            request.color(), request.weight()
+        );
 
         return TodoResponse.from(todo);
     }

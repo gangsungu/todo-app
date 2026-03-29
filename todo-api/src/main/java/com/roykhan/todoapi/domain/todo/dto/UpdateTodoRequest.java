@@ -3,10 +3,8 @@ package com.roykhan.todoapi.domain.todo.dto;
 import com.roykhan.todoapi.domain.todo.TodoStatus;
 import java.time.LocalDate;
 
-public record CreateTodoRequest(
+public record UpdateTodoRequest(
     String title,
-    Long parentId,
-    Integer sortOrder,
     TodoStatus status,
     int progress,
     LocalDate startDate,

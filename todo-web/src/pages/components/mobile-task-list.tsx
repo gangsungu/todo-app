@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Plus, Trash2, Calendar, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
 import type { Task } from '../types';
 import { calculateWeightedProgress } from '../utils/task-progress';
 import { MOBILE_TASK_DEFAULTS } from '../utils/task-defaults';
@@ -28,19 +27,31 @@ export function MobileTaskList({
   const [addingSubtaskToId, setAddingSubtaskToId] = useState<string | null>(null);
   const [newTaskName, setNewTaskName] = useState('');
   const [newTaskWeight, setNewTaskWeight] = useState(100);
+  const [newTaskStartDate, setNewTaskStartDate] = useState('');
+  const [newTaskEndDate, setNewTaskEndDate] = useState('');
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
 
   const taskHierarchy = useTaskTree(tasks);
 
+  const getDefaultDates = () => {
+    const today = new Date();
+    const defaultEnd = new Date();
+    defaultEnd.setDate(defaultEnd.getDate() + MOBILE_TASK_DEFAULTS.defaultDurationDays);
+    return {
+      start: format(today, 'yyyy-MM-dd'),
+      end: format(defaultEnd, 'yyyy-MM-dd'),
+    };
+  };
+
   const handleAddTask = (parentId?: string) => {
     if (newTaskName.trim()) {
-      const today = new Date();
-      const endDate = new Date(today);
-      endDate.setDate(endDate.getDate() + MOBILE_TASK_DEFAULTS.defaultDurationDays);
+      const defaults = getDefaultDates();
+      const startDate = new Date((newTaskStartDate || defaults.start) + 'T00:00:00');
+      const endDate = new Date((newTaskEndDate || defaults.end) + 'T00:00:00');
 
       onAddTask({
         name: newTaskName,
-        startDate: today,
+        startDate,
         endDate,
         progress: 0,
         status: 'todo',
@@ -50,6 +61,8 @@ export function MobileTaskList({
       });
       setNewTaskName('');
       setNewTaskWeight(100);
+      setNewTaskStartDate('');
+      setNewTaskEndDate('');
       setIsAddingTask(false);
       setAddingSubtaskToId(null);
 
@@ -167,10 +180,21 @@ export function MobileTaskList({
 
     <div className="space-y-3">
     <div className="flex items-center gap-2 text-sm text-gray-600">
-    <Calendar className="w-4 h-4 flex-shrink-0" />
-        <span>
-            {format(task.startDate, 'M/d', { locale: ko })} - {format(task.endDate, 'M/d', { locale: ko })}
-    </span>
+    <input
+      type="date"
+      value={format(task.startDate, 'yyyy-MM-dd')}
+      onChange={(e) => { e.stopPropagation(); onUpdateTask(task.id, { startDate: new Date(e.target.value + 'T00:00:00') }); }}
+      onClick={(e) => e.stopPropagation()}
+      className="flex-1 text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-500 bg-white"
+    />
+    <span className="text-gray-400">-</span>
+    <input
+      type="date"
+      value={format(task.endDate, 'yyyy-MM-dd')}
+      onChange={(e) => { e.stopPropagation(); onUpdateTask(task.id, { endDate: new Date(e.target.value + 'T00:00:00') }); }}
+      onClick={(e) => e.stopPropagation()}
+      className="flex-1 text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-500 bg-white"
+    />
     </div>
 
     <div>
@@ -249,6 +273,9 @@ export function MobileTaskList({
       const currentTotalWeight = children.reduce((sum, child) => sum + (child.weight || 0), 0);
       const suggestedWeight = Math.max(0, 100 - currentTotalWeight);
       setNewTaskWeight(suggestedWeight);
+      const defaults = getDefaultDates();
+      setNewTaskStartDate(defaults.start);
+      setNewTaskEndDate(defaults.end);
     }}
       className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors font-medium"
       >
@@ -273,6 +300,24 @@ export function MobileTaskList({
       autoFocus
       />
       <div className="mb-3">
+        <label className="text-sm text-gray-600 mb-2 block">일정</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={newTaskStartDate}
+            onChange={(e) => setNewTaskStartDate(e.target.value)}
+            className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 bg-white"
+          />
+          <span className="text-gray-400">-</span>
+          <input
+            type="date"
+            value={newTaskEndDate}
+            onChange={(e) => setNewTaskEndDate(e.target.value)}
+            className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 bg-white"
+          />
+        </div>
+      </div>
+      <div className="mb-3">
       <label className="text-sm text-gray-600 mb-2 block">가중치: {newTaskWeight}%</label>
     <input
       type="range"
@@ -295,6 +340,8 @@ export function MobileTaskList({
       setAddingSubtaskToId(null);
       setNewTaskName('');
       setNewTaskWeight(100);
+      setNewTaskStartDate('');
+      setNewTaskEndDate('');
     }}
       className="flex-1 px-4 py-3 bg-gray-200 rounded-lg font-medium"
           >
@@ -333,6 +380,24 @@ export function MobileTaskList({
   className="w-full px-4 py-3 border rounded-lg text-base"
   autoFocus
   />
+  <div>
+    <label className="text-sm text-gray-600 mb-2 block">일정</label>
+    <div className="flex items-center gap-2">
+      <input
+        type="date"
+        value={newTaskStartDate}
+        onChange={(e) => setNewTaskStartDate(e.target.value)}
+        className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500"
+      />
+      <span className="text-gray-400">-</span>
+      <input
+        type="date"
+        value={newTaskEndDate}
+        onChange={(e) => setNewTaskEndDate(e.target.value)}
+        className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500"
+      />
+    </div>
+  </div>
   <div className="flex gap-2">
   <button
       onClick={() => handleAddTask()}
@@ -344,6 +409,8 @@ export function MobileTaskList({
   onClick={() => {
     setIsAddingTask(false);
     setNewTaskName('');
+    setNewTaskStartDate('');
+    setNewTaskEndDate('');
   }}
   className="flex-1 px-4 py-3 bg-gray-200 rounded-lg font-medium"
       >
@@ -353,7 +420,12 @@ export function MobileTaskList({
       </div>
 ) : (
       <button
-          onClick={() => setIsAddingTask(true)}
+          onClick={() => {
+            const defaults = getDefaultDates();
+            setNewTaskStartDate(defaults.start);
+            setNewTaskEndDate(defaults.end);
+            setIsAddingTask(true);
+          }}
   className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-blue-600 text-white rounded-lg font-medium shadow-lg"
   >
   <Plus className="w-6 h-6" />
