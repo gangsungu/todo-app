@@ -17,7 +17,7 @@ export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }
   const { currentMonth, startDate, endDate, days, previousMonth, nextMonth, todayMonth } = useMonthNavigation();
   const [dragState, setDragState] = useState<{
     taskId: string;
-    type: 'move' | 'resize-start' | 'resize-end';
+    type: 'move';
     startX: number;
     originalStart: Date;
     originalEnd: Date;
@@ -41,16 +41,12 @@ export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }
     };
   };
 
-  const handleMouseDown = (
-    e: React.MouseEvent,
-    task: Task,
-    type: 'move' | 'resize-start' | 'resize-end'
-  ) => {
+  const handleMouseDown = (e: React.MouseEvent, task: Task) => {
     e.preventDefault();
     e.stopPropagation();
     setDragState({
       taskId: task.id,
-      type,
+      type: 'move',
       startX: e.clientX,
       originalStart: task.startDate,
       originalEnd: task.endDate,
@@ -70,27 +66,9 @@ export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }
       const task = tasks.find((t) => t.id === dragState.taskId);
       if (!task) return;
 
-      let newStart = dragState.originalStart;
-      let newEnd = dragState.originalEnd;
-
-      if (dragState.type === 'move') {
-        newStart = addDays(dragState.originalStart, daysDelta);
-        newEnd = addDays(dragState.originalEnd, daysDelta);
-      } else if (dragState.type === 'resize-start') {
-        newStart = addDays(dragState.originalStart, daysDelta);
-        if (newStart >= dragState.originalEnd) {
-          newStart = addDays(dragState.originalEnd, -1);
-        }
-      } else if (dragState.type === 'resize-end') {
-        newEnd = addDays(dragState.originalEnd, daysDelta);
-        if (newEnd <= dragState.originalStart) {
-          newEnd = addDays(dragState.originalStart, 1);
-        }
-      }
-
       onUpdateTask(dragState.taskId, {
-        startDate: newStart,
-        endDate: newEnd,
+        startDate: addDays(dragState.originalStart, daysDelta),
+        endDate: addDays(dragState.originalEnd, daysDelta),
       });
     };
 
@@ -227,23 +205,12 @@ export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }
                       }}
                       onMouseDown={(e) => {
                         if (!hasChildren) {
-                          handleMouseDown(e, task, 'move');
+                          handleMouseDown(e, task);
                         }
                       }}
                     >
-                      {/* Resize handle - left */}
-                      {!hasChildren && (
-                        <div
-                          className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize opacity-0 group-hover:opacity-100 transition-opacity bg-indigo-700"
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                            handleMouseDown(e, task, 'resize-start');
-                          }}
-                        />
-                      )}
-
                       {/* Task content */}
-                      <div className="px-2 py-1 h-full flex items-center justify-between gap-2">
+                      <div className="px-2 py-1 h-full flex items-center justify-between gap-2 pointer-events-none">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
                           <span
                             className={`text-xs font-medium truncate ${
@@ -264,27 +231,6 @@ export function GanttChart({ tasks, selectedTaskId, onSelectTask, onUpdateTask }
                           </span>
                         )}
                       </div>
-
-                      {/* Progress bar */}
-                      {!hasChildren && (
-                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-900/20">
-                          <div
-                            className="h-full bg-white/40 transition-all"
-                            style={{ width: `${calculatedProgress}%` }}
-                          />
-                        </div>
-                      )}
-
-                      {/* Resize handle - right */}
-                      {!hasChildren && (
-                        <div
-                          className="absolute right-0 top-0 bottom-0 w-1 cursor-ew-resize opacity-0 group-hover:opacity-100 transition-opacity bg-indigo-700"
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                            handleMouseDown(e, task, 'resize-end');
-                          }}
-                        />
-                      )}
                     </div>
                   </div>
                 );
