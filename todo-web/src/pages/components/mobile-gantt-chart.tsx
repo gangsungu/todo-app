@@ -196,7 +196,9 @@ export function MobileGanttChart({ tasks, selectedTaskId, onSelectTask }: Mobile
                 const task = tasks.find(t => t.id === selectedTaskId)!;
                 const children = taskHierarchy.getChildren(task.id);
                 const hasChildren = children.length > 0;
-                const calculatedProgress = hasChildren ? calculateWeightedProgress(task.id) : task.progress;
+                const { progress: calculatedProgress } = hasChildren
+                  ? calculateWeightedProgress(task.id, tasks, taskHierarchy.getChildren)
+                  : { progress: task.progress };
 
                 return (
                     <div>
