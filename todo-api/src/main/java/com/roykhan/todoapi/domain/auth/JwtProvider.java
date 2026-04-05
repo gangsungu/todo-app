@@ -1,4 +1,4 @@
-package com.roykhan.todoapi.auth;
+package com.roykhan.todoapi.domain.auth;
 
 import com.nimbusds.jose.util.StandardCharset;
 import io.jsonwebtoken.Claims;

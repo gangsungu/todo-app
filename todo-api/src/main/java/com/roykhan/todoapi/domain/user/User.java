@@ -42,13 +42,12 @@ public class User {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    public static User create(String email, String name, String profileImage, String provider, String refreshToken) {
+    public static User create(String email, String name, String profileImage, String provider) {
         User user = new User();
         user.email = email;
         user.name = name;
         user.profileImage = profileImage;
         user.provider = provider;
-        user.refreshToken = refreshToken;
         return user;
     }
 
