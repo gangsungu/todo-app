@@ -12,3 +12,6 @@ build/
 
 # OS
 .DS_Store
+
+# 환경변수 관리
+todo-api/.env
