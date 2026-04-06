@@ -1,7 +1,14 @@
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) ?? '';
 
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
@@ -11,7 +18,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new Error(`API ${res.status}: ${text}`);
+    throw new ApiError(res.status, `API ${res.status}: ${text}`);
   }
 
   if (res.status === 204) return undefined as T;
