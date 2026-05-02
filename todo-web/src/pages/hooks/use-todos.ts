@@ -7,6 +7,7 @@ import {
   deleteTodo,
   type TodoApiResponse,
 } from '@/features/todos/todo.api';
+import { ApiError } from '@/lib/api';
 import { DESKTOP_TASK_DEFAULTS } from '../utils/task-defaults';
 
 function toTask(t: TodoApiResponse): Task {
@@ -47,11 +48,18 @@ export function useTodos() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
     fetchTodos()
       .then((data) => setTasks(data.map(toTask)))
-      .catch((e) => setError(e.message))
+      .catch((e) => {
+        if (e instanceof ApiError && e.status === 401) {
+          setIsGuest(true);
+        } else {
+          setError(e.message);
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -94,5 +102,5 @@ export function useTodos() {
     await deleteTodo(Number(id));
   }, []);
 
-  return { tasks, loading, error, handleAddTask, handleUpdateTask, handleDeleteTask };
+  return { tasks, loading, error, isGuest, handleAddTask, handleUpdateTask, handleDeleteTask };
 }

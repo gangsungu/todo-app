@@ -8,7 +8,7 @@ import { useMediaQuery } from './hooks/use-media-query';
 import { useTodos } from './hooks/use-todos';
 
 export default function App() {
-  const { tasks, loading, error, handleAddTask, handleUpdateTask, handleDeleteTask } = useTodos();
+  const { tasks, loading, error, isGuest, handleAddTask, handleUpdateTask, handleDeleteTask } = useTodos();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'gantt'>('gantt');
 
@@ -33,8 +33,16 @@ export default function App() {
   if (isMobile) {
     return (
       <div className="size-full flex flex-col bg-gray-50">
-        <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20">
+        <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20 flex items-center justify-between">
           <h1 className="text-lg font-semibold text-gray-900">Gantodo</h1>
+          {isGuest && (
+            <a
+              href="/login"
+              className="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+            >
+              Sign in
+            </a>
+          )}
         </header>
 
         <div className="flex-1 overflow-hidden">
@@ -87,6 +95,14 @@ export default function App() {
       <header className="border-b border-gray-200 px-6 py-3 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-gray-900">Gantodo</h1>
         <div className="flex items-center gap-3">
+          {isGuest && (
+            <a
+              href="/login"
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+            >
+              Sign in
+            </a>
+          )}
           <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg">
             <button
               onClick={() => setViewMode('gantt')}
