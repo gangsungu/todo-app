@@ -16,6 +16,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import com.roykhan.todoapi.domain.user.User;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -62,6 +63,10 @@ public class Todo {
     private Integer weight;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private Todo parent;
 
@@ -77,12 +82,13 @@ public class Todo {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    public static Todo create(String title, Todo parent, int sortOrder,
+    public static Todo create(String title, User user, Todo parent, int sortOrder,
                               TodoStatus status, int progress,
                               LocalDate startDate, LocalDate endDate,
                               String color, Integer weight) {
         Todo todo = new Todo();
         todo.title = title;
+        todo.user = user;
         todo.parent = parent;
         todo.sortOrder = sortOrder;
         todo.status = status != null ? status : TodoStatus.TODO;

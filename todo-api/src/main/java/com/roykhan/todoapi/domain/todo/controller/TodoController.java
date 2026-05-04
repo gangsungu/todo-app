@@ -10,6 +10,7 @@ import java.util.List;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -28,36 +29,39 @@ public class TodoController {
     private final TodoQueryService todoQueryService;
 
     @GetMapping
-    public List<TodoResponse> getAll() {
-        return todoQueryService.getAll();
+    public List<TodoResponse> getAll(@AuthenticationPrincipal String email) {
+        return todoQueryService.getAll(email);
     }
 
     @GetMapping("/tree")
-    public List<TodoTreeResponse> tree() {
-        return todoQueryService.getTree();
+    public List<TodoTreeResponse> tree(@AuthenticationPrincipal String email) {
+        return todoQueryService.getTree(email);
     }
 
     @PatchMapping("/{id}/completed")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void complete(@PathVariable Long id, @RequestBody TodoCompletedUpdateRequest request) {
-        todoQueryService.updateCompletedCascade(id, request.completed());
+    public void complete(@AuthenticationPrincipal String email,
+                         @PathVariable Long id,
+                         @RequestBody TodoCompletedUpdateRequest request) {
+        todoQueryService.updateCompletedCascade(email, id, request.completed());
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        todoQueryService.delete(id);
+    public void delete(@AuthenticationPrincipal String email, @PathVariable Long id) {
+        todoQueryService.delete(email, id);
     }
 
     @PostMapping
-    public ResponseEntity<TodoResponse> create(@RequestBody CreateTodoRequest request) {
-        TodoResponse response = todoQueryService.create(request);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<TodoResponse> create(@AuthenticationPrincipal String email,
+                                               @RequestBody CreateTodoRequest request) {
+        return ResponseEntity.ok(todoQueryService.create(email, request));
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<TodoResponse> update(@PathVariable Long id, @RequestBody UpdateTodoRequest request) {
-        TodoResponse response = todoQueryService.update(id, request);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<TodoResponse> update(@AuthenticationPrincipal String email,
+                                               @PathVariable Long id,
+                                               @RequestBody UpdateTodoRequest request) {
+        return ResponseEntity.ok(todoQueryService.update(email, id, request));
     }
 }

@@ -12,9 +12,10 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
         select t
         from Todo t
         left join fetch t.parent p
+        where t.user.id = :userId
         order by p.id asc nulls first, t.sortOrder asc, t.id asc
     """)
-    List<Todo> findAllForTree();
+    List<Todo> findAllForTreeByUserId(Long userId);
 
     @Query("""
         select t from Todo t

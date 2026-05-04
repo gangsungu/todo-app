@@ -6,6 +6,8 @@ import com.roykhan.todoapi.domain.todo.dto.TodoResponse;
 import com.roykhan.todoapi.domain.todo.dto.TodoTreeResponse;
 import com.roykhan.todoapi.domain.todo.dto.UpdateTodoRequest;
 import com.roykhan.todoapi.domain.todo.repository.TodoRepository;
+import com.roykhan.todoapi.domain.user.User;
+import com.roykhan.todoapi.domain.user.repository.UserRepository;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -22,37 +24,41 @@ import org.springframework.transaction.annotation.Transactional;
 public class TodoQueryService {
 
     private final TodoRepository todoRepository;
+    private final UserRepository userRepository;
 
-    public List<TodoResponse> getAll() {
-        return todoRepository.findAllForTree().stream()
+    private User resolveUser(String email) {
+        return userRepository.findByEmail(email)
+            .orElseThrow(() -> new IllegalArgumentException("User not found: " + email));
+    }
+
+    public List<TodoResponse> getAll(String email) {
+        User user = resolveUser(email);
+        return todoRepository.findAllForTreeByUserId(user.getId()).stream()
             .map(TodoResponse::from)
             .toList();
     }
 
-    public List<TodoTreeResponse> getTree() {
-        List<Todo> todos = todoRepository.findAllForTree();
+    public List<TodoTreeResponse> getTree(String email) {
+        User user = resolveUser(email);
+        List<Todo> todos = todoRepository.findAllForTreeByUserId(user.getId());
 
         Map<Long, TodoTreeResponse> nodeMap = new HashMap<>();
-        for(Todo t : todos) {
+        for (Todo t : todos) {
             nodeMap.put(t.getId(),
                 new TodoTreeResponse(t.getId(), t.getTitle(), t.isCompleted(), t.getSortOrder()));
         }
 
         List<TodoTreeResponse> roots = new ArrayList<>();
-        for(Todo t : todos) {
+        for (Todo t : todos) {
             TodoTreeResponse node = nodeMap.get(t.getId());
-
             Todo parent = t.getParent();
-            if(parent == null) {
+            if (parent == null) {
                 roots.add(node);
-            }
-            else {
+            } else {
                 TodoTreeResponse parentNode = nodeMap.get(parent.getId());
-
-                if(parentNode == null) {
+                if (parentNode == null) {
                     roots.add(node);
-                }
-                else {
+                } else {
                     parentNode.addChild(node);
                 }
             }
@@ -62,54 +68,50 @@ public class TodoQueryService {
     }
 
     @Transactional
-    public void updateCompletedCascade(Long rootId, boolean completed) {
-        List<Todo> all = todoRepository.findAllForTree();
+    public void updateCompletedCascade(String email, Long rootId, boolean completed) {
+        User user = resolveUser(email);
+        List<Todo> all = todoRepository.findAllForTreeByUserId(user.getId());
 
         Map<Long, Todo> byId = new HashMap<>(all.size());
         Map<Long, List<Long>> byParentId = new HashMap<>();
 
-        for(Todo t : all) {
+        for (Todo t : all) {
             byId.put(t.getId(), t);
-
             Long parentId = (t.getParent() == null) ? null : t.getParent().getId();
-            if(parentId != null) {
+            if (parentId != null) {
                 byParentId.computeIfAbsent(parentId, k -> new ArrayList<>()).add(t.getId());
             }
         }
 
         Todo root = byId.get(rootId);
-        if(root == null) {
-            throw new IllegalArgumentException("Root Todo not found:" + rootId);
+        if (root == null) {
+            throw new IllegalArgumentException("Root Todo not found: " + rootId);
         }
 
-        // 서브트리 id 수집 (BFS)
         Deque<Long> q = new ArrayDeque<>();
         q.add(rootId);
-
-        while(!q.isEmpty()) {
+        while (!q.isEmpty()) {
             Long cur = q.poll();
             Todo curTodo = byId.get(cur);
-            if(curTodo != null) {
-                curTodo.toggleCompleted(completed);
-            }
-
+            if (curTodo != null) curTodo.toggleCompleted(completed);
             List<Long> childIds = byParentId.get(cur);
-            if(childIds != null) {
-                for(Long childId : childIds) {
-                    q.add(childId);
-                }
-            }
+            if (childIds != null) q.addAll(childIds);
         }
     }
 
-    public void delete(Long id) {
-        if (!todoRepository.existsById(id)) {
+    public void delete(String email, Long id) {
+        User user = resolveUser(email);
+        Todo todo = todoRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Todo not found: " + id));
+        if (!todo.getUser().getId().equals(user.getId())) {
             throw new IllegalArgumentException("Todo not found: " + id);
         }
         todoRepository.deleteById(id);
     }
 
-    public TodoResponse create(CreateTodoRequest request) {
+    public TodoResponse create(String email, CreateTodoRequest request) {
+        User user = resolveUser(email);
+
         Todo parent = null;
         if (request.parentId() != null) {
             parent = todoRepository.findById(request.parentId())
@@ -119,7 +121,7 @@ public class TodoQueryService {
         int sortOrder = request.sortOrder() != null ? request.sortOrder() : 0;
 
         Todo todo = Todo.create(
-            request.title(), parent, sortOrder,
+            request.title(), user, parent, sortOrder,
             request.status(), request.progress(),
             request.startDate(), request.endDate(),
             request.color(), request.weight()
@@ -129,9 +131,13 @@ public class TodoQueryService {
         return TodoResponse.from(todo);
     }
 
-    public TodoResponse update(Long id, UpdateTodoRequest request) {
+    public TodoResponse update(String email, Long id, UpdateTodoRequest request) {
+        User user = resolveUser(email);
         Todo todo = todoRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Todo not found: " + id));
+        if (!todo.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("Todo not found: " + id);
+        }
 
         todo.update(
             request.title(), request.status(), request.progress(),
