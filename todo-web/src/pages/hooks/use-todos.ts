@@ -7,9 +7,9 @@ import {
   deleteTodo,
   type TodoApiResponse,
 } from '@/features/todos/todo.api';
-import { ApiError } from '@/lib/api';
 import { DESKTOP_TASK_DEFAULTS } from '../utils/task-defaults';
 import { loadGuestTasks, saveGuestTasks } from './guest-storage';
+import { checkAuth } from '@/features/auth/auth.api';
 
 function toTask(t: TodoApiResponse): Task {
   const today = new Date();
@@ -53,16 +53,16 @@ export function useTodos() {
 
   const load = useCallback(() => {
     setLoading(true);
-    fetchTodos()
-      .then((data) => setTasks(data.map(toTask)))
-      .catch((e) => {
-        if (e instanceof ApiError && e.status === 401) {
+    checkAuth()
+      .then((auth) => {
+        if (!auth.authenticated) {
           setIsGuest(true);
           setTasks(loadGuestTasks());
-        } else {
-          setError(e.message);
+          return;
         }
+        return fetchTodos().then((data) => setTasks(data.map(toTask)));
       })
+      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
