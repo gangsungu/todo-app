@@ -9,6 +9,7 @@ import {
 } from '@/features/todos/todo.api';
 import { ApiError } from '@/lib/api';
 import { DESKTOP_TASK_DEFAULTS } from '../utils/task-defaults';
+import { loadGuestTasks, saveGuestTasks } from './guest-storage';
 
 function toTask(t: TodoApiResponse): Task {
   const today = new Date();
@@ -50,12 +51,14 @@ export function useTodos() {
   const [error, setError] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
     fetchTodos()
       .then((data) => setTasks(data.map(toTask)))
       .catch((e) => {
         if (e instanceof ApiError && e.status === 401) {
           setIsGuest(true);
+          setTasks(loadGuestTasks());
         } else {
           setError(e.message);
         }
@@ -63,7 +66,18 @@ export function useTodos() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => { load(); }, [load]);
+
   const handleAddTask = useCallback(async (newTask: Omit<Task, 'id'>) => {
+    if (isGuest) {
+      const task: Task = { ...newTask, id: crypto.randomUUID() };
+      setTasks(prev => {
+        const next = [...prev, task];
+        saveGuestTasks(next);
+        return next;
+      });
+      return;
+    }
     const created = await createTodo({
       title: newTask.name,
       parentId: newTask.parentId ? Number(newTask.parentId) : null,
@@ -75,17 +89,21 @@ export function useTodos() {
       weight: newTask.weight ?? null,
     });
     setTasks((prev) => [...prev, toTask(created)]);
-  }, []);
+  }, [isGuest]);
 
   const handleUpdateTask = useCallback(async (id: string, updates: Partial<Task>) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
-    );
-
+    if (isGuest) {
+      setTasks(prev => {
+        const next = prev.map(t => t.id === id ? { ...t, ...updates } : t);
+        saveGuestTasks(next);
+        return next;
+      });
+      return;
+    }
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
     const current = tasks.find((t) => t.id === id);
     if (!current) return;
     const merged = { ...current, ...updates };
-
     await updateTodo(Number(id), {
       title: merged.name,
       status: toBackendStatus(merged.status),
@@ -95,12 +113,20 @@ export function useTodos() {
       color: merged.color,
       weight: merged.weight ?? null,
     });
-  }, [tasks]);
+  }, [isGuest, tasks]);
 
   const handleDeleteTask = useCallback(async (id: string) => {
+    if (isGuest) {
+      setTasks(prev => {
+        const next = prev.filter(t => t.id !== id);
+        saveGuestTasks(next);
+        return next;
+      });
+      return;
+    }
     setTasks((prev) => prev.filter((t) => t.id !== id));
     await deleteTodo(Number(id));
-  }, []);
+  }, [isGuest]);
 
-  return { tasks, loading, error, isGuest, handleAddTask, handleUpdateTask, handleDeleteTask };
+  return { tasks, loading, error, isGuest, handleAddTask, handleUpdateTask, handleDeleteTask, refetch: load };
 }

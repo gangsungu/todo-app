@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TaskList } from './components/task-list';
 import { GanttChart } from './components/gantt-chart';
 import { MobileTaskList } from './components/mobile-task-list';
@@ -6,9 +6,22 @@ import { MobileGanttChart } from './components/mobile-gantt-chart';
 import { ListTodo, BarChart3 } from 'lucide-react';
 import { useMediaQuery } from './hooks/use-media-query';
 import { useTodos } from './hooks/use-todos';
+import { useMigration } from './hooks/use-migration';
+import { hasGuestTasks } from './hooks/guest-storage';
 
 export default function App() {
-  const { tasks, loading, error, isGuest, handleAddTask, handleUpdateTask, handleDeleteTask } = useTodos();
+  const { tasks, loading, error, isGuest, handleAddTask, handleUpdateTask, handleDeleteTask, refetch } = useTodos();
+  const [showMigrationBanner, setShowMigrationBanner] = useState(false);
+  const { migrate, isMigrating } = useMigration(() => {
+    setShowMigrationBanner(false);
+    refetch();
+  });
+
+  useEffect(() => {
+    if (!loading && !isGuest && hasGuestTasks()) {
+      setShowMigrationBanner(true);
+    }
+  }, [loading, isGuest]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'gantt'>('gantt');
 
@@ -44,6 +57,26 @@ export default function App() {
             </a>
           )}
         </header>
+        {showMigrationBanner && (
+          <div className="bg-indigo-50 border-b border-indigo-100 px-4 py-2.5 flex items-center justify-between gap-3">
+            <p className="text-xs text-indigo-700">이전에 작성한 작업을 가져올까요?</p>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => setShowMigrationBanner(false)}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                건너뛰기
+              </button>
+              <button
+                onClick={migrate}
+                disabled={isMigrating}
+                className="text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 px-3 py-1 rounded-md transition-colors"
+              >
+                {isMigrating ? '가져오는 중...' : '가져오기'}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 overflow-hidden">
           {viewMode === 'list' ? (
@@ -129,6 +162,27 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {showMigrationBanner && (
+        <div className="bg-indigo-50 border-b border-indigo-100 px-6 py-2.5 flex items-center justify-between">
+          <p className="text-sm text-indigo-700">이전에 작성한 작업을 현재 계정으로 가져올까요?</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowMigrationBanner(false)}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              건너뛰기
+            </button>
+            <button
+              onClick={migrate}
+              disabled={isMigrating}
+              className="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 px-4 py-1.5 rounded-md transition-colors"
+            >
+              {isMigrating ? '가져오는 중...' : '가져오기'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-hidden">
         {viewMode === 'list' ? (
