@@ -8,6 +8,7 @@ import { useMediaQuery } from './hooks/use-media-query';
 import { useTodos } from './hooks/use-todos';
 import { useMigration } from './hooks/use-migration';
 import { hasGuestTasks } from './hooks/guest-storage';
+import { logout } from '@/features/auth/auth.api';
 
 export default function App() {
   const { tasks, loading, error, isGuest, handleAddTask, handleUpdateTask, handleDeleteTask, refetch } = useTodos();
@@ -48,13 +49,14 @@ export default function App() {
       <div className="size-full flex flex-col bg-gray-50">
         <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20 flex items-center justify-between">
           <h1 className="text-lg font-semibold text-gray-900">Gantodo</h1>
-          {isGuest && (
-            <a
-              href="/login"
-              className="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
-            >
+          {isGuest ? (
+            <a href="/login" className="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
               Sign in
             </a>
+          ) : (
+            <button onClick={() => logout().then(() => window.location.href = '/')} className="text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">
+              Logout
+            </button>
           )}
         </header>
         {showMigrationBanner && (
@@ -128,13 +130,14 @@ export default function App() {
       <header className="border-b border-gray-200 px-6 py-3 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-gray-900">Gantodo</h1>
         <div className="flex items-center gap-3">
-          {isGuest && (
-            <a
-              href="/login"
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
-            >
+          {isGuest ? (
+            <a href="/login" className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
               Sign in
             </a>
+          ) : (
+            <button onClick={() => logout().then(() => window.location.href = '/')} className="text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors">
+              Logout
+            </button>
           )}
           <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg">
             <button

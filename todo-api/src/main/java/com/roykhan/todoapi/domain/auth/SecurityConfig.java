@@ -48,7 +48,7 @@ public class SecurityConfig {
                 response.setContentType("application/json");
                 response.getWriter().write("{\"error\":\"Unauthorized\"}");
             }))
-            .oauth2Login(oauth -> oauth.userInfoEndpoint(user -> user.userService(userService))
+            .oauth2Login(oauth -> oauth.userInfoEndpoint(user -> user.oidcUserService(userService))
                 .successHandler(successHandler))
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
             .build();
