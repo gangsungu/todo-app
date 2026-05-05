@@ -30,6 +30,7 @@ export function TaskList({
   const [newTaskStartDate, setNewTaskStartDate] = useState('');
   const [newTaskEndDate, setNewTaskEndDate] = useState('');
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [draggingWeight, setDraggingWeight] = useState<{ id: string; value: number } | null>(null);
 
   const taskHierarchy = useTaskTree(tasks);
 
@@ -403,11 +404,18 @@ export function TaskList({
                       type="range"
                       min="0"
                       max="100"
-                      value={task.weight}
-                      onChange={(e) => onUpdateTask(task.id, { weight: parseInt(e.target.value) })}
+                      value={draggingWeight?.id === task.id ? draggingWeight.value : task.weight}
+                      onChange={(e) => setDraggingWeight({ id: task.id, value: parseInt(e.target.value) })}
+                      onPointerUp={(e) => {
+                        const value = parseInt((e.target as HTMLInputElement).value);
+                        onUpdateTask(task.id, { weight: value });
+                        setDraggingWeight(null);
+                      }}
                       className="w-full"
                     />
-                    <div className="text-xs text-gray-600 mt-1">{task.weight}%</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      {draggingWeight?.id === task.id ? draggingWeight.value : task.weight}%
+                    </div>
                   </div>
                 )}
               </div>
