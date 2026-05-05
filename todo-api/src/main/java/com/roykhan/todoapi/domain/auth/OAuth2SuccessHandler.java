@@ -6,6 +6,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
@@ -15,10 +17,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final JwtProvider jwtProvider;
     private final UserRepository userRepository;
+
+    @Value("${app.frontend-url:/}")
+    private String frontendUrl;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
@@ -28,14 +34,19 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         String accessToken = jwtProvider.createAccessToken(email);
         String refreshToken = jwtProvider.createRefreshToken(email);
 
+        log.info("email : {}", email);
+
         // Refresh Token DB 저장
-        userRepository.findByEmail(email).ifPresent(user -> user.updateRefreshToken(refreshToken));
+        userRepository.findByEmail(email).ifPresent(user -> {
+            user.updateRefreshToken(refreshToken);
+            userRepository.save(user);
+        });
 
         // HttpOnly 쿠키로 전달
         addCookie(response, "access_token", accessToken, 3600);
         addCookie(response, "refresh_token", refreshToken, 1209600);
 
-        getRedirectStrategy().sendRedirect(request, response, "/");
+        getRedirectStrategy().sendRedirect(request, response, frontendUrl);
     }
 
     private void addCookie(HttpServletResponse response, String name, String value, int maxAge) {
