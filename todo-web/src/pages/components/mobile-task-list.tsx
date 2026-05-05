@@ -30,6 +30,7 @@ export function MobileTaskList({
   const [newTaskStartDate, setNewTaskStartDate] = useState('');
   const [newTaskEndDate, setNewTaskEndDate] = useState('');
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [draggingWeight, setDraggingWeight] = useState<{ id: string; value: number } | null>(null);
 
   const taskHierarchy = useTaskTree(tasks);
 
@@ -233,16 +234,23 @@ export function MobileTaskList({
 
       {task.weight !== undefined && (
           <div>
-              <label className="text-sm text-gray-600 mb-2 block">가중치</label>
+              <label className="text-sm text-gray-600 mb-2 block">
+                가중치 {draggingWeight?.id === task.id ? draggingWeight.value : task.weight}%
+              </label>
               <input
         type="range"
         min="0"
         max="100"
-        value={task.weight}
+        value={draggingWeight?.id === task.id ? draggingWeight.value : task.weight}
         onChange={(e) => {
-        e.stopPropagation();
-        onUpdateTask(task.id, { weight: parseInt(e.target.value) });
-      }}
+          e.stopPropagation();
+          setDraggingWeight({ id: task.id, value: parseInt(e.target.value) });
+        }}
+        onPointerUp={(e) => {
+          const value = parseInt((e.target as HTMLInputElement).value);
+          onUpdateTask(task.id, { weight: value });
+          setDraggingWeight(null);
+        }}
         onClick={(e) => e.stopPropagation()}
         className="w-full"
             />
