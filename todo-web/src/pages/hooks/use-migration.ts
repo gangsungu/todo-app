@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { Task } from '../types';
-import { createTodo } from '@/features/todos/todo.api';
+import { bulkCreateTodos } from '@/features/todos/todo.api';
 import { loadGuestTasks, clearGuestTasks } from './guest-storage';
 
 function toBackendStatus(status: Task['status']) {
@@ -38,23 +38,20 @@ export function useMigration(onComplete: () => void) {
     if (guestTasks.length === 0) return;
 
     setIsMigrating(true);
-    // 클라이언트 UUID → 서버 ID 매핑
-    const idMap = new Map<string, number>();
 
-    for (const task of topologicalSort(guestTasks)) {
-      const newParentId = task.parentId != null ? (idMap.get(task.parentId) ?? null) : null;
-      const created = await createTodo({
-        title: task.name,
-        parentId: newParentId,
-        status: toBackendStatus(task.status),
-        progress: task.progress,
-        startDate: task.startDate.toISOString().split('T')[0],
-        endDate: task.endDate.toISOString().split('T')[0],
-        color: task.color,
-        weight: task.weight ?? null,
-      });
-      idMap.set(task.id, created.id);
-    }
+    const items = topologicalSort(guestTasks).map(task => ({
+      clientTempId: task.id,
+      parentClientTempId: task.parentId ?? null,
+      title: task.name,
+      status: toBackendStatus(task.status),
+      progress: task.progress,
+      startDate: task.startDate.toISOString().split('T')[0],
+      endDate: task.endDate.toISOString().split('T')[0],
+      color: task.color,
+      weight: task.weight ?? null,
+    }));
+
+    await bulkCreateTodos(items);
 
     clearGuestTasks();
     setIsMigrating(false);

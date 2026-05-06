@@ -1,6 +1,7 @@
 package com.roykhan.todoapi.domain.todo.service;
 
 import com.roykhan.todoapi.domain.todo.Todo;
+import com.roykhan.todoapi.domain.todo.dto.BulkCreateTodoItem;
 import com.roykhan.todoapi.domain.todo.dto.CreateTodoRequest;
 import com.roykhan.todoapi.domain.todo.dto.TodoResponse;
 import com.roykhan.todoapi.domain.todo.dto.TodoTreeResponse;
@@ -129,6 +130,32 @@ public class TodoQueryService {
         todoRepository.save(todo);
 
         return TodoResponse.from(todo);
+    }
+
+    public List<TodoResponse> bulkCreate(String email, List<BulkCreateTodoItem> items) {
+        User user = resolveUser(email);
+        Map<String, Todo> tempIdToTodo = new HashMap<>();
+        List<Todo> created = new ArrayList<>();
+
+        for (BulkCreateTodoItem item : items) {
+            Todo parent = item.parentClientTempId() != null
+                ? tempIdToTodo.get(item.parentClientTempId())
+                : null;
+            int sortOrder = item.sortOrder() != null ? item.sortOrder() : 0;
+            Todo todo = Todo.create(
+                item.title(), user, parent, sortOrder,
+                item.status(), item.progress(),
+                item.startDate(), item.endDate(),
+                item.color(), item.weight()
+            );
+            todoRepository.save(todo);
+            if (item.clientTempId() != null) {
+                tempIdToTodo.put(item.clientTempId(), todo);
+            }
+            created.add(todo);
+        }
+
+        return created.stream().map(TodoResponse::from).toList();
     }
 
     public TodoResponse update(String email, Long id, UpdateTodoRequest request) {

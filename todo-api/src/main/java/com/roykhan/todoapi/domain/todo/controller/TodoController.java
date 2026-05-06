@@ -1,5 +1,6 @@
 package com.roykhan.todoapi.domain.todo.controller;
 
+import com.roykhan.todoapi.domain.todo.dto.BulkCreateTodoItem;
 import com.roykhan.todoapi.domain.todo.dto.CreateTodoRequest;
 import com.roykhan.todoapi.domain.todo.dto.TodoCompletedUpdateRequest;
 import com.roykhan.todoapi.domain.todo.dto.TodoResponse;
@@ -56,6 +57,12 @@ public class TodoController {
     public ResponseEntity<TodoResponse> create(@AuthenticationPrincipal String email,
                                                @RequestBody CreateTodoRequest request) {
         return ResponseEntity.ok(todoQueryService.create(email, request));
+    }
+
+    @PostMapping("/bulk")
+    public ResponseEntity<List<TodoResponse>> bulkCreate(@AuthenticationPrincipal String email,
+                                                         @RequestBody List<BulkCreateTodoItem> items) {
+        return ResponseEntity.ok(todoQueryService.bulkCreate(email, items));
     }
 
     @PatchMapping("/{id}")
