@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { TaskList } from './components/task-list';
 import { GanttChart } from './components/gantt-chart';
 import { MobileTaskList } from './components/mobile-task-list';
@@ -7,22 +7,27 @@ import { ListTodo, BarChart3 } from 'lucide-react';
 import { useMediaQuery } from './hooks/use-media-query';
 import { useTodos } from './hooks/use-todos';
 import { useMigration } from './hooks/use-migration';
-import { hasGuestTasks } from './hooks/guest-storage';
+import { hasGuestTasks, isMigrationLocked } from './hooks/guest-storage';
 import { logout } from '@/features/auth/auth.api';
 
 export default function App() {
   const { tasks, loading, error, isGuest, handleAddTask, handleUpdateTask, handleDeleteTask, refetch } = useTodos();
   const [showMigrationBanner, setShowMigrationBanner] = useState(false);
-  const { migrate, isMigrating } = useMigration(() => {
+  const onMigrationComplete = useCallback(() => {
     setShowMigrationBanner(false);
     refetch();
-  });
+  }, [refetch]);
+  const { migrate, isMigrating } = useMigration(onMigrationComplete);
 
   useEffect(() => {
     if (!loading && !isGuest && hasGuestTasks()) {
-      setShowMigrationBanner(true);
+      if (isMigrationLocked()) {
+        migrate();
+      } else {
+        setShowMigrationBanner(true);
+      }
     }
-  }, [loading, isGuest]);
+  }, [loading, isGuest, migrate]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'gantt'>('gantt');
 

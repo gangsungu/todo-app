@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { Task } from '../types';
 import { bulkCreateTodos } from '@/features/todos/todo.api';
-import { loadGuestTasks, clearGuestTasks } from './guest-storage';
+import { loadGuestTasks, clearGuestTasks, setMigrationLock, clearMigrationLock } from './guest-storage';
 
 function toBackendStatus(status: Task['status']) {
   switch (status) {
@@ -38,24 +38,29 @@ export function useMigration(onComplete: () => void) {
     if (guestTasks.length === 0) return;
 
     setIsMigrating(true);
+    setMigrationLock();
 
-    const items = topologicalSort(guestTasks).map(task => ({
-      clientTempId: task.id,
-      parentClientTempId: task.parentId ?? null,
-      title: task.name,
-      status: toBackendStatus(task.status),
-      progress: task.progress,
-      startDate: task.startDate.toISOString().split('T')[0],
-      endDate: task.endDate.toISOString().split('T')[0],
-      color: task.color,
-      weight: task.weight ?? null,
-    }));
+    try {
+      const items = topologicalSort(guestTasks).map(task => ({
+        clientTempId: task.id,
+        parentClientTempId: task.parentId ?? null,
+        title: task.name,
+        status: toBackendStatus(task.status),
+        progress: task.progress,
+        startDate: task.startDate.toISOString().split('T')[0],
+        endDate: task.endDate.toISOString().split('T')[0],
+        color: task.color,
+        weight: task.weight ?? null,
+      }));
 
-    await bulkCreateTodos(items);
+      await bulkCreateTodos(items);
 
-    clearGuestTasks();
-    setIsMigrating(false);
-    onComplete();
+      clearGuestTasks();
+      clearMigrationLock();
+      onComplete();
+    } finally {
+      setIsMigrating(false);
+    }
   }, [onComplete]);
 
   return { migrate, isMigrating };

@@ -134,10 +134,25 @@ public class TodoQueryService {
 
     public List<TodoResponse> bulkCreate(String email, List<BulkCreateTodoItem> items) {
         User user = resolveUser(email);
-        Map<String, Todo> tempIdToTodo = new HashMap<>();
-        List<Todo> created = new ArrayList<>();
+
+        // 이미 저장된 clientTempId 조회 (재시도 시 중복 방지)
+        List<String> tempIds = items.stream()
+            .map(BulkCreateTodoItem::clientTempId)
+            .filter(id -> id != null)
+            .toList();
+        Map<String, Todo> existing = todoRepository
+            .findAllByUserIdAndClientTempIdIn(user.getId(), tempIds)
+            .stream()
+            .collect(java.util.stream.Collectors.toMap(Todo::getClientTempId, t -> t));
+
+        Map<String, Todo> tempIdToTodo = new HashMap<>(existing);
+        List<Todo> result = new ArrayList<>();
 
         for (BulkCreateTodoItem item : items) {
+            if (item.clientTempId() != null && existing.containsKey(item.clientTempId())) {
+                result.add(existing.get(item.clientTempId()));
+                continue;
+            }
             Todo parent = item.parentClientTempId() != null
                 ? tempIdToTodo.get(item.parentClientTempId())
                 : null;
@@ -146,16 +161,17 @@ public class TodoQueryService {
                 item.title(), user, parent, sortOrder,
                 item.status(), item.progress(),
                 item.startDate(), item.endDate(),
-                item.color(), item.weight()
+                item.color(), item.weight(),
+                item.clientTempId()
             );
             todoRepository.save(todo);
             if (item.clientTempId() != null) {
                 tempIdToTodo.put(item.clientTempId(), todo);
             }
-            created.add(todo);
+            result.add(todo);
         }
 
-        return created.stream().map(TodoResponse::from).toList();
+        return result.stream().map(TodoResponse::from).toList();
     }
 
     public TodoResponse update(String email, Long id, UpdateTodoRequest request) {

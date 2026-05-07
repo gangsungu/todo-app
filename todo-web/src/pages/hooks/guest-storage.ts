@@ -40,3 +40,17 @@ export function saveGuestTasks(tasks: Task[]): void {
 export function clearGuestTasks(): void {
   localStorage.removeItem(STORAGE_KEY);
 }
+
+const MIGRATION_LOCK_KEY = 'guest_migration_lock';
+
+export function setMigrationLock(): void {
+  localStorage.setItem(MIGRATION_LOCK_KEY, 'true');
+}
+
+export function clearMigrationLock(): void {
+  localStorage.removeItem(MIGRATION_LOCK_KEY);
+}
+
+export function isMigrationLocked(): boolean {
+  return localStorage.getItem(MIGRATION_LOCK_KEY) === 'true';
+}
