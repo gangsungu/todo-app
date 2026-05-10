@@ -32,6 +32,12 @@ public class TodoQueryService {
             .orElseThrow(() -> new IllegalArgumentException("User not found: " + email));
     }
 
+    private void validateDateRange(java.time.LocalDate startDate, java.time.LocalDate endDate) {
+        if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException("endDate must not be before startDate");
+        }
+    }
+
     public List<TodoResponse> getAll(String email) {
         User user = resolveUser(email);
         return todoRepository.findAllForTreeByUserId(user.getId()).stream()
@@ -111,6 +117,7 @@ public class TodoQueryService {
     }
 
     public TodoResponse create(String email, CreateTodoRequest request) {
+        validateDateRange(request.startDate(), request.endDate());
         User user = resolveUser(email);
 
         Todo parent = null;
@@ -153,6 +160,7 @@ public class TodoQueryService {
                 result.add(existing.get(item.clientTempId()));
                 continue;
             }
+            validateDateRange(item.startDate(), item.endDate());
             Todo parent = item.parentClientTempId() != null
                 ? tempIdToTodo.get(item.parentClientTempId())
                 : null;
@@ -175,6 +183,7 @@ public class TodoQueryService {
     }
 
     public TodoResponse update(String email, Long id, UpdateTodoRequest request) {
+        validateDateRange(request.startDate(), request.endDate());
         User user = resolveUser(email);
         Todo todo = todoRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Todo not found: " + id));

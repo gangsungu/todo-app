@@ -11,6 +11,19 @@ function toBackendStatus(status: Task['status']) {
   }
 }
 
+function isValidTask(task: Task): boolean {
+  return (
+    typeof task.name === 'string' &&
+    task.name.trim().length > 0 &&
+    task.name.length <= 200 &&
+    task.startDate instanceof Date && !isNaN(task.startDate.getTime()) &&
+    task.endDate instanceof Date && !isNaN(task.endDate.getTime()) &&
+    task.startDate <= task.endDate &&
+    typeof task.progress === 'number' && task.progress >= 0 && task.progress <= 100 &&
+    (task.weight == null || (task.weight >= 0 && task.weight <= 100))
+  );
+}
+
 // 부모가 자식보다 먼저 오도록 정렬
 function topologicalSort(tasks: Task[]): Task[] {
   const taskMap = new Map(tasks.map(t => [t.id, t]));
@@ -41,7 +54,7 @@ export function useMigration(onComplete: () => void) {
     setMigrationLock();
 
     try {
-      const items = topologicalSort(guestTasks).map(task => ({
+      const items = topologicalSort(guestTasks).filter(isValidTask).map(task => ({
         clientTempId: task.id,
         parentClientTempId: task.parentId ?? null,
         title: task.name,
