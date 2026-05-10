@@ -1,11 +1,13 @@
 package com.roykhan.todoapi.domain.todo.controller;
 
+import com.roykhan.todoapi.domain.todo.dto.BulkCreateTodoItem;
 import com.roykhan.todoapi.domain.todo.dto.CreateTodoRequest;
 import com.roykhan.todoapi.domain.todo.dto.TodoCompletedUpdateRequest;
 import com.roykhan.todoapi.domain.todo.dto.TodoResponse;
 import com.roykhan.todoapi.domain.todo.dto.TodoTreeResponse;
 import com.roykhan.todoapi.domain.todo.dto.UpdateTodoRequest;
 import com.roykhan.todoapi.domain.todo.service.TodoQueryService;
+import jakarta.validation.Valid;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -54,14 +56,20 @@ public class TodoController {
 
     @PostMapping
     public ResponseEntity<TodoResponse> create(@AuthenticationPrincipal String email,
-                                               @RequestBody CreateTodoRequest request) {
+                                               @Valid @RequestBody CreateTodoRequest request) {
         return ResponseEntity.ok(todoQueryService.create(email, request));
+    }
+
+    @PostMapping("/bulk")
+    public ResponseEntity<List<TodoResponse>> bulkCreate(@AuthenticationPrincipal String email,
+                                                         @Valid @RequestBody List<BulkCreateTodoItem> items) {
+        return ResponseEntity.ok(todoQueryService.bulkCreate(email, items));
     }
 
     @PatchMapping("/{id}")
     public ResponseEntity<TodoResponse> update(@AuthenticationPrincipal String email,
                                                @PathVariable Long id,
-                                               @RequestBody UpdateTodoRequest request) {
+                                               @Valid @RequestBody UpdateTodoRequest request) {
         return ResponseEntity.ok(todoQueryService.update(email, id, request));
     }
 }

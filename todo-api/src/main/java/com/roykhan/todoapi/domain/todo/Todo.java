@@ -76,6 +76,9 @@ public class Todo {
     @Column(name = "sort_order", nullable = false)
     private int sortOrder = 0;
 
+    @Column(name = "client_temp_id", length = 36)
+    private String clientTempId;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -86,6 +89,13 @@ public class Todo {
                               TodoStatus status, int progress,
                               LocalDate startDate, LocalDate endDate,
                               String color, Integer weight) {
+        return create(title, user, parent, sortOrder, status, progress, startDate, endDate, color, weight, null);
+    }
+
+    public static Todo create(String title, User user, Todo parent, int sortOrder,
+                              TodoStatus status, int progress,
+                              LocalDate startDate, LocalDate endDate,
+                              String color, Integer weight, String clientTempId) {
         Todo todo = new Todo();
         todo.title = title;
         todo.user = user;
@@ -98,6 +108,7 @@ public class Todo {
         todo.endDate = endDate;
         todo.color = color;
         todo.weight = weight;
+        todo.clientTempId = clientTempId;
         return todo;
     }
 

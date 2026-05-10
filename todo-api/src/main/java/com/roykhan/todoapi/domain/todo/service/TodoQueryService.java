@@ -1,6 +1,7 @@
 package com.roykhan.todoapi.domain.todo.service;
 
 import com.roykhan.todoapi.domain.todo.Todo;
+import com.roykhan.todoapi.domain.todo.dto.BulkCreateTodoItem;
 import com.roykhan.todoapi.domain.todo.dto.CreateTodoRequest;
 import com.roykhan.todoapi.domain.todo.dto.TodoResponse;
 import com.roykhan.todoapi.domain.todo.dto.TodoTreeResponse;
@@ -29,6 +30,12 @@ public class TodoQueryService {
     private User resolveUser(String email) {
         return userRepository.findByEmail(email)
             .orElseThrow(() -> new IllegalArgumentException("User not found: " + email));
+    }
+
+    private void validateDateRange(java.time.LocalDate startDate, java.time.LocalDate endDate) {
+        if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException("endDate must not be before startDate");
+        }
     }
 
     public List<TodoResponse> getAll(String email) {
@@ -110,6 +117,7 @@ public class TodoQueryService {
     }
 
     public TodoResponse create(String email, CreateTodoRequest request) {
+        validateDateRange(request.startDate(), request.endDate());
         User user = resolveUser(email);
 
         Todo parent = null;
@@ -131,7 +139,51 @@ public class TodoQueryService {
         return TodoResponse.from(todo);
     }
 
+    public List<TodoResponse> bulkCreate(String email, List<BulkCreateTodoItem> items) {
+        User user = resolveUser(email);
+
+        // 이미 저장된 clientTempId 조회 (재시도 시 중복 방지)
+        List<String> tempIds = items.stream()
+            .map(BulkCreateTodoItem::clientTempId)
+            .filter(id -> id != null)
+            .toList();
+        Map<String, Todo> existing = todoRepository
+            .findAllByUserIdAndClientTempIdIn(user.getId(), tempIds)
+            .stream()
+            .collect(java.util.stream.Collectors.toMap(Todo::getClientTempId, t -> t));
+
+        Map<String, Todo> tempIdToTodo = new HashMap<>(existing);
+        List<Todo> result = new ArrayList<>();
+
+        for (BulkCreateTodoItem item : items) {
+            if (item.clientTempId() != null && existing.containsKey(item.clientTempId())) {
+                result.add(existing.get(item.clientTempId()));
+                continue;
+            }
+            validateDateRange(item.startDate(), item.endDate());
+            Todo parent = item.parentClientTempId() != null
+                ? tempIdToTodo.get(item.parentClientTempId())
+                : null;
+            int sortOrder = item.sortOrder() != null ? item.sortOrder() : 0;
+            Todo todo = Todo.create(
+                item.title(), user, parent, sortOrder,
+                item.status(), item.progress(),
+                item.startDate(), item.endDate(),
+                item.color(), item.weight(),
+                item.clientTempId()
+            );
+            todoRepository.save(todo);
+            if (item.clientTempId() != null) {
+                tempIdToTodo.put(item.clientTempId(), todo);
+            }
+            result.add(todo);
+        }
+
+        return result.stream().map(TodoResponse::from).toList();
+    }
+
     public TodoResponse update(String email, Long id, UpdateTodoRequest request) {
+        validateDateRange(request.startDate(), request.endDate());
         User user = resolveUser(email);
         Todo todo = todoRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Todo not found: " + id));

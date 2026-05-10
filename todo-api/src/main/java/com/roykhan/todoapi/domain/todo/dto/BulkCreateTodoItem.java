@@ -8,10 +8,13 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
-public record UpdateTodoRequest(
+public record BulkCreateTodoItem(
+    String clientTempId,
+    String parentClientTempId,
     @NotBlank @Size(max = 200)
     String title,
-    @NotNull
+    @Min(0)
+    Integer sortOrder,
     TodoStatus status,
     @Min(0) @Max(100)
     int progress,

@@ -1,6 +1,7 @@
 package com.roykhan.todoapi.domain.todo.repository;
 
 import com.roykhan.todoapi.domain.todo.Todo;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,4 +24,6 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
         where t.id = :id
     """)
     Optional<Todo> findByIdWithChildren(Long id);
+
+    List<Todo> findAllByUserIdAndClientTempIdIn(Long userId, Collection<String> clientTempIds);
 }

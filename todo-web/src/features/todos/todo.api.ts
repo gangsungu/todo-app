@@ -61,3 +61,23 @@ export async function updateTodo(id: number, body: UpdateTodoRequest) {
 export async function deleteTodo(id: number) {
   return apiFetch<void>(`/api/todos/${id}`, { method: 'DELETE' });
 }
+
+export type BulkCreateTodoItem = {
+  clientTempId: string;
+  parentClientTempId: string | null;
+  title: string;
+  sortOrder?: number | null;
+  status?: TodoStatus;
+  progress?: number;
+  startDate?: string | null;
+  endDate?: string | null;
+  color?: string | null;
+  weight?: number | null;
+};
+
+export async function bulkCreateTodos(items: BulkCreateTodoItem[]) {
+  return apiFetch<TodoApiResponse[]>('/api/todos/bulk', {
+    method: 'POST',
+    body: JSON.stringify(items),
+  });
+}

@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { Task } from '../types';
-import { createTodo } from '@/features/todos/todo.api';
-import { loadGuestTasks, clearGuestTasks } from './guest-storage';
+import { bulkCreateTodos } from '@/features/todos/todo.api';
+import { loadGuestTasks, clearGuestTasks, setMigrationLock, clearMigrationLock } from './guest-storage';
 
 function toBackendStatus(status: Task['status']) {
   switch (status) {
@@ -9,6 +9,19 @@ function toBackendStatus(status: Task['status']) {
     case 'completed':   return 'COMPLETED' as const;
     default:            return 'TODO' as const;
   }
+}
+
+function isValidTask(task: Task): boolean {
+  return (
+    typeof task.name === 'string' &&
+    task.name.trim().length > 0 &&
+    task.name.length <= 200 &&
+    task.startDate instanceof Date && !isNaN(task.startDate.getTime()) &&
+    task.endDate instanceof Date && !isNaN(task.endDate.getTime()) &&
+    task.startDate <= task.endDate &&
+    typeof task.progress === 'number' && task.progress >= 0 && task.progress <= 100 &&
+    (task.weight == null || (task.weight >= 0 && task.weight <= 100))
+  );
 }
 
 // 부모가 자식보다 먼저 오도록 정렬
@@ -38,27 +51,29 @@ export function useMigration(onComplete: () => void) {
     if (guestTasks.length === 0) return;
 
     setIsMigrating(true);
-    // 클라이언트 UUID → 서버 ID 매핑
-    const idMap = new Map<string, number>();
+    setMigrationLock();
 
-    for (const task of topologicalSort(guestTasks)) {
-      const newParentId = task.parentId != null ? (idMap.get(task.parentId) ?? null) : null;
-      const created = await createTodo({
+    try {
+      const items = topologicalSort(guestTasks).filter(isValidTask).map(task => ({
+        clientTempId: task.id,
+        parentClientTempId: task.parentId ?? null,
         title: task.name,
-        parentId: newParentId,
         status: toBackendStatus(task.status),
         progress: task.progress,
         startDate: task.startDate.toISOString().split('T')[0],
         endDate: task.endDate.toISOString().split('T')[0],
         color: task.color,
         weight: task.weight ?? null,
-      });
-      idMap.set(task.id, created.id);
-    }
+      }));
 
-    clearGuestTasks();
-    setIsMigrating(false);
-    onComplete();
+      await bulkCreateTodos(items);
+
+      clearGuestTasks();
+      clearMigrationLock();
+      onComplete();
+    } finally {
+      setIsMigrating(false);
+    }
   }, [onComplete]);
 
   return { migrate, isMigrating };
