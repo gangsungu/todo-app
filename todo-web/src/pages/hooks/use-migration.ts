@@ -54,10 +54,21 @@ export function useMigration(onComplete: () => void) {
     setMigrationLock();
 
     try {
+      // 원본 배열 순서 기준으로 형제 간 sortOrder 계산
+      const siblingCountMap = new Map<string | null, number>();
+      const sortOrderMap = new Map<string, number>();
+      for (const task of guestTasks) {
+        const parentKey = task.parentId ?? null;
+        const idx = siblingCountMap.get(parentKey) ?? 0;
+        sortOrderMap.set(task.id, idx);
+        siblingCountMap.set(parentKey, idx + 1);
+      }
+
       const items = topologicalSort(guestTasks).filter(isValidTask).map(task => ({
         clientTempId: task.id,
         parentClientTempId: task.parentId ?? null,
         title: task.name,
+        sortOrder: sortOrderMap.get(task.id) ?? 0,
         status: toBackendStatus(task.status),
         progress: task.progress,
         startDate: task.startDate.toISOString().split('T')[0],
