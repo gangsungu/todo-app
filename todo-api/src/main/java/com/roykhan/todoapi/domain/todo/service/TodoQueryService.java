@@ -105,6 +105,9 @@ public class TodoQueryService {
         if (request.parentId() != null) {
             parent = todoRepository.findById(request.parentId())
                 .orElseThrow(() -> new IllegalArgumentException("Parent Todo not found: " + request.parentId()));
+            if (!parent.getUser().getId().equals(user.getId())) {
+                throw new IllegalArgumentException("Parent Todo not found: " + request.parentId());
+            }
         }
 
         int sortOrder = request.sortOrder() != null ? request.sortOrder() : 0;
