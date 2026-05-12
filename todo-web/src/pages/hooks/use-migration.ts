@@ -3,6 +3,16 @@ import type { Task } from '../types';
 import { bulkCreateTodos } from '@/features/todos/todo.api';
 import { loadGuestTasks, clearGuestTasks, setMigrationLock, clearMigrationLock } from './guest-storage';
 
+const CHUNK_SIZE = 50;
+
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
+  }
+  return result;
+}
+
 function toBackendStatus(status: Task['status']) {
   switch (status) {
     case 'in-progress': return 'IN_PROGRESS' as const;
@@ -77,7 +87,9 @@ export function useMigration(onComplete: () => void) {
         weight: task.weight ?? null,
       }));
 
-      await bulkCreateTodos(items);
+      for (const chunk of chunkArray(items, CHUNK_SIZE)) {
+        await bulkCreateTodos(chunk);
+      }
 
       clearGuestTasks();
       clearMigrationLock();

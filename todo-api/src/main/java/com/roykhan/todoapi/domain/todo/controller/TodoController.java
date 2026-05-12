@@ -8,6 +8,7 @@ import com.roykhan.todoapi.domain.todo.dto.TodoTreeResponse;
 import com.roykhan.todoapi.domain.todo.dto.UpdateTodoRequest;
 import com.roykhan.todoapi.domain.todo.service.TodoQueryService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -21,8 +22,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 
+@Validated
 @RestController
 @RequestMapping("/api/todos")
 @AllArgsConstructor
@@ -62,7 +65,7 @@ public class TodoController {
 
     @PostMapping("/bulk")
     public ResponseEntity<List<TodoResponse>> bulkCreate(@AuthenticationPrincipal String email,
-                                                         @Valid @RequestBody List<BulkCreateTodoItem> items) {
+                                                         @Valid @Size(max = 50) @RequestBody List<BulkCreateTodoItem> items) {
         return ResponseEntity.ok(todoQueryService.bulkCreate(email, items));
     }
 
