@@ -142,13 +142,14 @@ public class TodoQueryService {
     public List<TodoResponse> bulkCreate(String email, List<BulkCreateTodoItem> items) {
         User user = resolveUser(email);
 
-        // 이미 저장된 clientTempId 조회 (재시도 시 중복 방지)
-        List<String> tempIds = items.stream()
-            .map(BulkCreateTodoItem::clientTempId)
+        // clientTempId + parentClientTempId 모두 조회 (청크 경계를 넘는 부모 참조 해결)
+        List<String> allTempIds = items.stream()
+            .flatMap(item -> java.util.stream.Stream.of(item.clientTempId(), item.parentClientTempId()))
             .filter(id -> id != null)
+            .distinct()
             .toList();
         Map<String, Todo> existing = todoRepository
-            .findAllByUserIdAndClientTempIdIn(user.getId(), tempIds)
+            .findAllByUserIdAndClientTempIdIn(user.getId(), allTempIds)
             .stream()
             .collect(java.util.stream.Collectors.toMap(Todo::getClientTempId, t -> t));
 
