@@ -32,3 +32,4 @@ jwt:
 
 app:
   frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
+  cookie-secure: ${COOKIE_SECURE:false}
