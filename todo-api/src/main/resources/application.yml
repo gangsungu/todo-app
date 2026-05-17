@@ -10,7 +10,7 @@ spring:
     password: ${DB_PASSWORD:gantodo1234}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
   flyway:
     enabled: true
@@ -32,3 +32,4 @@ jwt:
 
 app:
   frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
+  cookie-secure: ${COOKIE_SECURE:false}

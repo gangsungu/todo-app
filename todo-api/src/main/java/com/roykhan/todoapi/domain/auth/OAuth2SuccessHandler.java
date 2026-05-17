@@ -26,6 +26,9 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     @Value("${app.frontend-url:/}")
     private String frontendUrl;
 
+    @Value("${app.cookie-secure:false}")
+    private boolean cookieSecure;
+
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
@@ -52,7 +55,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private void addCookie(HttpServletResponse response, String name, String value, int maxAge) {
         ResponseCookie cookie = ResponseCookie.from(name, value)
             .httpOnly(true)
-            .secure(false)
+            .secure(cookieSecure)
             .path("/")
             .maxAge(maxAge)
             .sameSite("Lax")
