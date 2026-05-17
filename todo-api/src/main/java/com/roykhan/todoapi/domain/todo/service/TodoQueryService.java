@@ -9,9 +9,7 @@ import com.roykhan.todoapi.domain.todo.dto.UpdateTodoRequest;
 import com.roykhan.todoapi.domain.todo.repository.TodoRepository;
 import com.roykhan.todoapi.domain.user.User;
 import com.roykhan.todoapi.domain.user.repository.UserRepository;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,38 +70,6 @@ public class TodoQueryService {
         }
 
         return roots;
-    }
-
-    @Transactional
-    public void updateCompletedCascade(String email, Long rootId, boolean completed) {
-        User user = resolveUser(email);
-        List<Todo> all = todoRepository.findAllForTreeByUserId(user.getId());
-
-        Map<Long, Todo> byId = new HashMap<>(all.size());
-        Map<Long, List<Long>> byParentId = new HashMap<>();
-
-        for (Todo t : all) {
-            byId.put(t.getId(), t);
-            Long parentId = (t.getParent() == null) ? null : t.getParent().getId();
-            if (parentId != null) {
-                byParentId.computeIfAbsent(parentId, k -> new ArrayList<>()).add(t.getId());
-            }
-        }
-
-        Todo root = byId.get(rootId);
-        if (root == null) {
-            throw new IllegalArgumentException("Root Todo not found: " + rootId);
-        }
-
-        Deque<Long> q = new ArrayDeque<>();
-        q.add(rootId);
-        while (!q.isEmpty()) {
-            Long cur = q.poll();
-            Todo curTodo = byId.get(cur);
-            if (curTodo != null) curTodo.toggleCompleted(completed);
-            List<Long> childIds = byParentId.get(cur);
-            if (childIds != null) q.addAll(childIds);
-        }
     }
 
     public void delete(String email, Long id) {
