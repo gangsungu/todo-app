@@ -1,6 +1,7 @@
 package com.roykhan.todoapi.domain.todo.service;
 
 import com.roykhan.todoapi.domain.todo.Todo;
+import com.roykhan.todoapi.domain.todo.TodoStatus;
 import com.roykhan.todoapi.domain.todo.dto.BulkCreateTodoItem;
 import com.roykhan.todoapi.domain.todo.dto.CreateTodoRequest;
 import com.roykhan.todoapi.domain.todo.dto.TodoResponse;
@@ -9,7 +10,9 @@ import com.roykhan.todoapi.domain.todo.dto.UpdateTodoRequest;
 import com.roykhan.todoapi.domain.todo.repository.TodoRepository;
 import com.roykhan.todoapi.domain.user.User;
 import com.roykhan.todoapi.domain.user.repository.UserRepository;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +73,31 @@ public class TodoQueryService {
         }
 
         return roots;
+    }
+
+    private void cascadeCompleted(Long userId, Long rootId) {
+        List<Todo> all = todoRepository.findAllForTreeByUserId(userId);
+
+        Map<Long, Todo> byId = new HashMap<>(all.size());
+        Map<Long, List<Long>> byParentId = new HashMap<>();
+        for (Todo t : all) {
+            byId.put(t.getId(), t);
+            Long parentId = t.getParent() == null ? null : t.getParent().getId();
+            if (parentId != null) {
+                byParentId.computeIfAbsent(parentId, k -> new ArrayList<>()).add(t.getId());
+            }
+        }
+
+        Deque<Long> q = new ArrayDeque<>(byParentId.getOrDefault(rootId, List.of()));
+        while (!q.isEmpty()) {
+            Long cur = q.poll();
+            Todo curTodo = byId.get(cur);
+            if (curTodo != null) {
+                curTodo.markCompleted();
+                List<Long> children = byParentId.get(cur);
+                if (children != null) q.addAll(children);
+            }
+        }
     }
 
     public void delete(String email, Long id) {
@@ -163,6 +191,10 @@ public class TodoQueryService {
             request.startDate(), request.endDate(),
             request.color(), request.weight()
         );
+
+        if (request.status() == TodoStatus.COMPLETED) {
+            cascadeCompleted(user.getId(), id);
+        }
 
         return TodoResponse.from(todo);
     }

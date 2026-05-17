@@ -123,6 +123,11 @@ public class Todo {
         this.updatedAt = LocalDateTime.now();
     }
 
+    public void markCompleted() {
+        this.status = TodoStatus.COMPLETED;
+        this.completed = true;
+    }
+
     public void update(String title, TodoStatus status, int progress,
                        LocalDate startDate, LocalDate endDate, String color, Integer weight) {
         this.title = title;
