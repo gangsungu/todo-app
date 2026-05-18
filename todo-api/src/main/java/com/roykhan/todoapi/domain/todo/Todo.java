@@ -128,6 +128,11 @@ public class Todo {
         this.completed = true;
     }
 
+    public void markTodo() {
+        this.status = TodoStatus.TODO;
+        this.completed = false;
+    }
+
     public void update(String title, TodoStatus status, int progress,
                        LocalDate startDate, LocalDate endDate, String color, Integer weight) {
         this.title = title;
