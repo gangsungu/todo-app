@@ -29,7 +29,13 @@ export default function App() {
     }
   }, [loading, isGuest, migrate]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'gantt'>('gantt');
+  const [viewMode, setViewMode] = useState<'list' | 'gantt'>(
+    () => (localStorage.getItem('viewMode') as 'list' | 'gantt') ?? 'gantt'
+  );
+  const handleSetViewMode = useCallback((mode: 'list' | 'gantt') => {
+    localStorage.setItem('viewMode', mode);
+    setViewMode(mode);
+  }, []);
 
   const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -107,7 +113,7 @@ export default function App() {
         <div className="bg-white border-t border-gray-200">
           <div className="flex items-center">
             <button
-              onClick={() => setViewMode('list')}
+              onClick={() => handleSetViewMode('list')}
               className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${
                 viewMode === 'list' ? 'text-indigo-600' : 'text-gray-400'
               }`}
@@ -116,7 +122,7 @@ export default function App() {
               <span className="text-xs font-medium">Tasks</span>
             </button>
             <button
-              onClick={() => setViewMode('gantt')}
+              onClick={() => handleSetViewMode('gantt')}
               className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${
                 viewMode === 'gantt' ? 'text-indigo-600' : 'text-gray-400'
               }`}
@@ -146,7 +152,7 @@ export default function App() {
           )}
           <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg">
             <button
-              onClick={() => setViewMode('gantt')}
+              onClick={() => handleSetViewMode('gantt')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 viewMode === 'gantt'
                   ? 'bg-white text-gray-900 shadow-sm'
@@ -157,7 +163,7 @@ export default function App() {
               Timeline
             </button>
             <button
-              onClick={() => setViewMode('list')}
+              onClick={() => handleSetViewMode('list')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 viewMode === 'list'
                   ? 'bg-white text-gray-900 shadow-sm'
