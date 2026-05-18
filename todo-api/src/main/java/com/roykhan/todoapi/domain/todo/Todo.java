@@ -123,13 +123,14 @@ public class Todo {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void toggleCompleted(boolean completed) {
-        this.completed = completed;
-        this.status = completed ? TodoStatus.COMPLETED : TodoStatus.TODO;
+    public void markCompleted() {
+        this.status = TodoStatus.COMPLETED;
+        this.completed = true;
+    }
 
-        for(Todo child : children) {
-            child.toggleCompleted(completed);
-        }
+    public void markTodo() {
+        this.status = TodoStatus.TODO;
+        this.completed = false;
     }
 
     public void update(String title, TodoStatus status, int progress,

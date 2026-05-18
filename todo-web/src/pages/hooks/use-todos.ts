@@ -113,7 +113,10 @@ export function useTodos() {
       color: merged.color,
       weight: merged.weight ?? null,
     });
-  }, [isGuest, tasks]);
+    if (updates.status === 'completed' || updates.status === 'todo') {
+      await load();
+    }
+  }, [isGuest, tasks, load]);
 
   const handleDeleteTask = useCallback(async (id: string) => {
     if (isGuest) {

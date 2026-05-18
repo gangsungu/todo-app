@@ -1,6 +1,7 @@
 package com.roykhan.todoapi.domain.todo.service;
 
 import com.roykhan.todoapi.domain.todo.Todo;
+import com.roykhan.todoapi.domain.todo.TodoStatus;
 import com.roykhan.todoapi.domain.todo.dto.BulkCreateTodoItem;
 import com.roykhan.todoapi.domain.todo.dto.CreateTodoRequest;
 import com.roykhan.todoapi.domain.todo.dto.TodoResponse;
@@ -74,35 +75,53 @@ public class TodoQueryService {
         return roots;
     }
 
-    @Transactional
-    public void updateCompletedCascade(String email, Long rootId, boolean completed) {
-        User user = resolveUser(email);
-        List<Todo> all = todoRepository.findAllForTreeByUserId(user.getId());
+    private void cascadeCompleted(Long userId, Long rootId) {
+        List<Todo> all = todoRepository.findAllForTreeByUserId(userId);
 
         Map<Long, Todo> byId = new HashMap<>(all.size());
         Map<Long, List<Long>> byParentId = new HashMap<>();
-
         for (Todo t : all) {
             byId.put(t.getId(), t);
-            Long parentId = (t.getParent() == null) ? null : t.getParent().getId();
+            Long parentId = t.getParent() == null ? null : t.getParent().getId();
             if (parentId != null) {
                 byParentId.computeIfAbsent(parentId, k -> new ArrayList<>()).add(t.getId());
             }
         }
 
-        Todo root = byId.get(rootId);
-        if (root == null) {
-            throw new IllegalArgumentException("Root Todo not found: " + rootId);
-        }
-
-        Deque<Long> q = new ArrayDeque<>();
-        q.add(rootId);
+        Deque<Long> q = new ArrayDeque<>(byParentId.getOrDefault(rootId, List.of()));
         while (!q.isEmpty()) {
             Long cur = q.poll();
             Todo curTodo = byId.get(cur);
-            if (curTodo != null) curTodo.toggleCompleted(completed);
-            List<Long> childIds = byParentId.get(cur);
-            if (childIds != null) q.addAll(childIds);
+            if (curTodo != null) {
+                curTodo.markCompleted();
+                List<Long> children = byParentId.get(cur);
+                if (children != null) q.addAll(children);
+            }
+        }
+    }
+
+    private void cascadeTodo(Long userId, Long rootId) {
+        List<Todo> all = todoRepository.findAllForTreeByUserId(userId);
+
+        Map<Long, Todo> byId = new HashMap<>(all.size());
+        Map<Long, List<Long>> byParentId = new HashMap<>();
+        for (Todo t : all) {
+            byId.put(t.getId(), t);
+            Long parentId = t.getParent() == null ? null : t.getParent().getId();
+            if (parentId != null) {
+                byParentId.computeIfAbsent(parentId, k -> new ArrayList<>()).add(t.getId());
+            }
+        }
+
+        Deque<Long> q = new ArrayDeque<>(byParentId.getOrDefault(rootId, List.of()));
+        while (!q.isEmpty()) {
+            Long cur = q.poll();
+            Todo curTodo = byId.get(cur);
+            if (curTodo != null) {
+                curTodo.markTodo();
+                List<Long> children = byParentId.get(cur);
+                if (children != null) q.addAll(children);
+            }
         }
     }
 
@@ -197,6 +216,12 @@ public class TodoQueryService {
             request.startDate(), request.endDate(),
             request.color(), request.weight()
         );
+
+        if (request.status() == TodoStatus.COMPLETED) {
+            cascadeCompleted(user.getId(), id);
+        } else if (request.status() == TodoStatus.TODO) {
+            cascadeTodo(user.getId(), id);
+        }
 
         return TodoResponse.from(todo);
     }
