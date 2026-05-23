@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Task } from '../types';
@@ -10,6 +10,7 @@ interface TaskListProps {
   tasks: Task[];
   onAddTask: (task: Omit<Task, 'id'>) => void;
   onUpdateTask: (id: string, task: Partial<Task>) => void;
+  onUpdateWeights: (updates: { id: string; weight: number }[]) => void;
   onDeleteTask: (id: string) => void;
   selectedTaskId: string | null;
   onSelectTask: (id: string | null) => void;
@@ -19,6 +20,7 @@ export function TaskList({
   tasks,
   onAddTask,
   onUpdateTask,
+  onUpdateWeights,
   onDeleteTask,
   selectedTaskId,
   onSelectTask,
@@ -30,7 +32,11 @@ export function TaskList({
   const [newTaskStartDate, setNewTaskStartDate] = useState('');
   const [newTaskEndDate, setNewTaskEndDate] = useState('');
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
-  const [draggingWeight, setDraggingWeight] = useState<{ id: string; value: number } | null>(null);
+  const [weightDrafts, setWeightDrafts] = useState<Map<string, number>>(new Map());
+
+  useEffect(() => {
+    setWeightDrafts(new Map());
+  }, [selectedTaskId]);
 
   const taskHierarchy = useTaskTree(tasks);
 
@@ -397,27 +403,72 @@ export function TaskList({
                   </div>
                 </div>
 
-                {task.weight !== undefined && (
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1">Weight</div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={draggingWeight?.id === task.id ? draggingWeight.value : task.weight}
-                      onChange={(e) => setDraggingWeight({ id: task.id, value: parseInt(e.target.value) })}
-                      onPointerUp={(e) => {
-                        const value = parseInt((e.target as HTMLInputElement).value);
-                        onUpdateTask(task.id, { weight: value });
-                        setDraggingWeight(null);
-                      }}
-                      className="w-full"
-                    />
-                    <div className="text-xs text-gray-600 mt-1">
-                      {draggingWeight?.id === task.id ? draggingWeight.value : task.weight}%
+                {(() => {
+                  const weightSiblings = tasks.filter(t =>
+                    t.parentId === task.parentId && t.weight !== undefined
+                  );
+                  if (weightSiblings.length === 0) return null;
+
+                  const effective = weightSiblings.map(t => ({
+                    id: t.id,
+                    name: t.name,
+                    weight: weightDrafts.has(t.id) ? weightDrafts.get(t.id)! : t.weight!,
+                  }));
+                  const total = effective.reduce((s, t) => s + t.weight, 0);
+                  const hasDraft = weightDrafts.size > 0;
+
+                  return (
+                    <div>
+                      <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                        <span>Weight</span>
+                        <span className={total === 100 ? 'text-green-600 font-medium' : 'text-red-500 font-medium'}>
+                          {total}%
+                        </span>
+                      </div>
+                      {effective.map(sibling => (
+                        <div key={sibling.id} className="flex items-center gap-2 mb-1.5">
+                          <span className={`text-xs truncate w-16 ${sibling.id === task.id ? 'text-indigo-600 font-medium' : 'text-gray-400'}`}>
+                            {sibling.name}
+                          </span>
+                          <input
+                            type="range" min="0" max="100"
+                            value={sibling.weight}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value);
+                              setWeightDrafts(prev => new Map([...prev, [sibling.id, val]]));
+                            }}
+                            className="flex-1"
+                          />
+                          <span className="text-xs text-gray-600 w-8 text-right">{sibling.weight}%</span>
+                        </div>
+                      ))}
+                      {hasDraft && (
+                        <div className="flex gap-1 mt-2">
+                          <button
+                            onClick={() => {
+                              onUpdateWeights(effective.map(t => ({ id: t.id, weight: t.weight })));
+                              setWeightDrafts(new Map());
+                            }}
+                            disabled={total !== 100}
+                            className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
+                              total === 100
+                                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            }`}
+                          >
+                            저장
+                          </button>
+                          <button
+                            onClick={() => setWeightDrafts(new Map())}
+                            className="flex-1 px-2 py-1 text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 rounded"
+                          >
+                            취소
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             );
           })()}

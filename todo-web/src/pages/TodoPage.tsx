@@ -11,7 +11,7 @@ import { hasGuestTasks, isMigrationLocked } from './hooks/guest-storage';
 import { logout } from '@/features/auth/auth.api';
 
 export default function App() {
-  const { tasks, loading, error, isGuest, handleAddTask, handleUpdateTask, handleDeleteTask, refetch } = useTodos();
+  const { tasks, loading, error, actionError, clearActionError, isGuest, handleAddTask, handleUpdateTask, handleUpdateWeights, handleDeleteTask, refetch } = useTodos();
   const [showMigrationBanner, setShowMigrationBanner] = useState(false);
   const onMigrationComplete = useCallback(() => {
     setShowMigrationBanner(false);
@@ -90,6 +90,12 @@ export default function App() {
             </div>
           </div>
         )}
+        {actionError && (
+          <div className="bg-red-50 border-b border-red-200 px-4 py-2.5 flex items-center justify-between gap-3">
+            <p className="text-xs text-red-700">{actionError}</p>
+            <button onClick={clearActionError} className="text-xs text-red-500 hover:text-red-700 flex-shrink-0">✕</button>
+          </div>
+        )}
 
         <div className="flex-1 overflow-hidden">
           {viewMode === 'list' ? (
@@ -97,6 +103,7 @@ export default function App() {
               tasks={tasks}
               onAddTask={handleAddTask}
               onUpdateTask={handleUpdateTask}
+              onUpdateWeights={handleUpdateWeights}
               onDeleteTask={handleDeleteTask}
               selectedTaskId={selectedTaskId}
               onSelectTask={setSelectedTaskId}
@@ -197,6 +204,12 @@ export default function App() {
           </div>
         </div>
       )}
+      {actionError && (
+        <div className="bg-red-50 border-b border-red-200 px-6 py-2.5 flex items-center justify-between">
+          <p className="text-sm text-red-700">{actionError}</p>
+          <button onClick={clearActionError} className="text-sm text-red-500 hover:text-red-700">✕</button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-hidden">
         {viewMode === 'list' ? (
@@ -206,6 +219,7 @@ export default function App() {
                 tasks={tasks}
                 onAddTask={handleAddTask}
                 onUpdateTask={handleUpdateTask}
+                onUpdateWeights={handleUpdateWeights}
                 onDeleteTask={handleDeleteTask}
                 selectedTaskId={selectedTaskId}
                 onSelectTask={setSelectedTaskId}
