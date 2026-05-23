@@ -5,6 +5,7 @@ import com.roykhan.todoapi.domain.todo.dto.CreateTodoRequest;
 import com.roykhan.todoapi.domain.todo.dto.TodoResponse;
 import com.roykhan.todoapi.domain.todo.dto.TodoTreeResponse;
 import com.roykhan.todoapi.domain.todo.dto.UpdateTodoRequest;
+import com.roykhan.todoapi.domain.todo.dto.WeightUpdateItem;
 import com.roykhan.todoapi.domain.todo.service.TodoQueryService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
@@ -70,5 +71,11 @@ public class TodoController {
                                                @Valid @RequestBody UpdateTodoRequest request) {
         log.info("update {}", id);
         return ResponseEntity.ok(todoQueryService.update(email, id, request));
+    }
+
+    @PatchMapping("/weights")
+    public ResponseEntity<List<TodoResponse>> updateWeights(@AuthenticationPrincipal String email,
+                                                            @Valid @RequestBody List<WeightUpdateItem> items) {
+        return ResponseEntity.ok(todoQueryService.updateWeights(email, items));
     }
 }

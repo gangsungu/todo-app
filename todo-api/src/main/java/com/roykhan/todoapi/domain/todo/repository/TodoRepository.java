@@ -26,4 +26,7 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
     Optional<Todo> findByIdWithChildren(Long id);
 
     List<Todo> findAllByUserIdAndClientTempIdIn(Long userId, Collection<String> clientTempIds);
+
+    @Query("select t from Todo t left join fetch t.parent where t.id in :ids and t.user.id = :userId")
+    List<Todo> findByIdsAndUserId(Collection<Long> ids, Long userId);
 }

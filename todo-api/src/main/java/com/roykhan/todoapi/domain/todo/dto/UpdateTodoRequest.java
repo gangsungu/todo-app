@@ -19,7 +19,5 @@ public record UpdateTodoRequest(
     LocalDate startDate,
     @NotNull
     LocalDate endDate,
-    String color,
-    @Min(0) @Max(100)
-    Integer weight
+    String color
 ) {}

@@ -7,6 +7,7 @@ import com.roykhan.todoapi.domain.todo.dto.CreateTodoRequest;
 import com.roykhan.todoapi.domain.todo.dto.TodoResponse;
 import com.roykhan.todoapi.domain.todo.dto.TodoTreeResponse;
 import com.roykhan.todoapi.domain.todo.dto.UpdateTodoRequest;
+import com.roykhan.todoapi.domain.todo.dto.WeightUpdateItem;
 import com.roykhan.todoapi.domain.todo.repository.TodoRepository;
 import com.roykhan.todoapi.domain.user.User;
 import com.roykhan.todoapi.domain.user.repository.UserRepository;
@@ -16,6 +17,8 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -161,7 +164,6 @@ public class TodoQueryService {
     public List<TodoResponse> bulkCreate(String email, List<BulkCreateTodoItem> items) {
         User user = resolveUser(email);
 
-        // clientTempId + parentClientTempId 모두 조회 (청크 경계를 넘는 부모 참조 해결)
         List<String> allTempIds = items.stream()
             .flatMap(item -> java.util.stream.Stream.of(item.clientTempId(), item.parentClientTempId()))
             .filter(id -> id != null)
@@ -170,7 +172,7 @@ public class TodoQueryService {
         Map<String, Todo> existing = todoRepository
             .findAllByUserIdAndClientTempIdIn(user.getId(), allTempIds)
             .stream()
-            .collect(java.util.stream.Collectors.toMap(Todo::getClientTempId, t -> t));
+            .collect(Collectors.toMap(Todo::getClientTempId, t -> t));
 
         Map<String, Todo> tempIdToTodo = new HashMap<>(existing);
         List<Todo> result = new ArrayList<>();
@@ -214,7 +216,7 @@ public class TodoQueryService {
         todo.update(
             request.title(), request.status(), request.progress(),
             request.startDate(), request.endDate(),
-            request.color(), request.weight()
+            request.color()
         );
 
         if (request.status() == TodoStatus.COMPLETED) {
@@ -224,5 +226,36 @@ public class TodoQueryService {
         }
 
         return TodoResponse.from(todo);
+    }
+
+    public List<TodoResponse> updateWeights(String email, List<WeightUpdateItem> items) {
+        User user = resolveUser(email);
+
+        List<Long> ids = items.stream().map(WeightUpdateItem::id).toList();
+        List<Todo> todos = todoRepository.findByIdsAndUserId(ids, user.getId());
+
+        if (todos.size() != items.size()) {
+            throw new IllegalArgumentException("일부 할일을 찾을 수 없습니다.");
+        }
+
+        Set<Object> parentKeys = todos.stream()
+            .map(t -> t.getParent() == null ? "root" : t.getParent().getId())
+            .collect(Collectors.toSet());
+        if (parentKeys.size() != 1) {
+            throw new IllegalArgumentException("모든 할일이 같은 부모를 가져야 합니다.");
+        }
+
+        int sum = items.stream().mapToInt(WeightUpdateItem::weight).sum();
+        if (sum != 100) {
+            throw new IllegalArgumentException("가중치 합계가 100이어야 합니다. 현재 합계: " + sum);
+        }
+
+        Map<Long, Integer> weightMap = items.stream()
+            .collect(Collectors.toMap(WeightUpdateItem::id, WeightUpdateItem::weight));
+        for (Todo todo : todos) {
+            todo.updateWeight(weightMap.get(todo.getId()));
+        }
+
+        return todos.stream().map(TodoResponse::from).toList();
     }
 }
