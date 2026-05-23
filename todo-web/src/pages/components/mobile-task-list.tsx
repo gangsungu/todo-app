@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Task } from '../types';
@@ -10,6 +10,7 @@ interface MobileTaskListProps {
   tasks: Task[];
   onAddTask: (task: Omit<Task, 'id'>) => void;
   onUpdateTask: (id: string, task: Partial<Task>) => void;
+  onUpdateWeights: (updates: { id: string; weight: number }[]) => void;
   onDeleteTask: (id: string) => void;
   selectedTaskId: string | null;
   onSelectTask: (id: string | null) => void;
@@ -19,6 +20,7 @@ export function MobileTaskList({
                                  tasks,
                                  onAddTask,
                                  onUpdateTask,
+                                 onUpdateWeights,
                                  onDeleteTask,
                                  selectedTaskId,
                                  onSelectTask,
@@ -30,7 +32,11 @@ export function MobileTaskList({
   const [newTaskStartDate, setNewTaskStartDate] = useState('');
   const [newTaskEndDate, setNewTaskEndDate] = useState('');
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
-  const [draggingWeight, setDraggingWeight] = useState<{ id: string; value: number } | null>(null);
+  const [weightDrafts, setWeightDrafts] = useState<Map<string, number>>(new Map());
+
+  useEffect(() => {
+    setWeightDrafts(new Map());
+  }, [selectedTaskId]);
 
   const taskHierarchy = useTaskTree(tasks);
 
@@ -232,30 +238,75 @@ export function MobileTaskList({
           </div>
     )}
 
-      {task.weight !== undefined && (
-          <div>
-              <label className="text-sm text-gray-600 mb-2 block">
-                가중치 {draggingWeight?.id === task.id ? draggingWeight.value : task.weight}%
-              </label>
-              <input
-        type="range"
-        min="0"
-        max="100"
-        value={draggingWeight?.id === task.id ? draggingWeight.value : task.weight}
-        onChange={(e) => {
-          e.stopPropagation();
-          setDraggingWeight({ id: task.id, value: parseInt(e.target.value) });
-        }}
-        onPointerUp={(e) => {
-          const value = parseInt((e.target as HTMLInputElement).value);
-          onUpdateTask(task.id, { weight: value });
-          setDraggingWeight(null);
-        }}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full"
-            />
+      {(() => {
+        const weightSiblings = tasks.filter(t =>
+          t.parentId === task.parentId && t.weight !== undefined
+        );
+        if (weightSiblings.length === 0) return null;
+
+        const effective = weightSiblings.map(t => ({
+          id: t.id,
+          name: t.name,
+          weight: weightDrafts.has(t.id) ? weightDrafts.get(t.id)! : t.weight!,
+        }));
+        const total = effective.reduce((s, t) => s + t.weight, 0);
+        const hasDraft = weightDrafts.size > 0;
+
+        return (
+          <div onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+              <span>가중치</span>
+              <span className={total === 100 ? 'text-green-600 font-medium' : 'text-red-500 font-medium'}>
+                합계 {total}%
+              </span>
             </div>
-      )}
+            {effective.map(sibling => (
+              <div key={sibling.id} className="flex items-center gap-2 mb-2">
+                <span className={`text-xs truncate w-16 ${sibling.id === task.id ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
+                  {sibling.name}
+                </span>
+                <input
+                  type="range" min="0" max="100"
+                  value={sibling.weight}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    const val = parseInt(e.target.value);
+                    setWeightDrafts(prev => new Map([...prev, [sibling.id, val]]));
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex-1"
+                />
+                <span className="text-xs text-gray-600 w-8 text-right">{sibling.weight}%</span>
+              </div>
+            ))}
+            {hasDraft && (
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUpdateWeights(effective.map(t => ({ id: t.id, weight: t.weight })));
+                    setWeightDrafts(new Map());
+                  }}
+                  disabled={total !== 100}
+                  className={`flex-1 px-3 py-2 text-sm rounded-lg font-medium transition-colors ${
+                    total === 100
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  저장
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setWeightDrafts(new Map()); }}
+                  className="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-lg font-medium"
+                >
+                  취소
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       <div>
           <label className="text-sm text-gray-600 mb-2 block">상태</label>

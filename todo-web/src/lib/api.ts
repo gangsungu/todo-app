@@ -20,8 +20,19 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      window.location.href = '/login';
+      return undefined as T;
+    }
     const text = await res.text().catch(() => '');
-    throw new ApiError(res.status, `API ${res.status}: ${text}`);
+    let message = `API ${res.status}`;
+    try {
+      const body = JSON.parse(text);
+      if (typeof body?.message === 'string') message = body.message;
+    } catch {
+      if (text) message = `API ${res.status}: ${text}`;
+    }
+    throw new ApiError(res.status, message);
   }
 
   if (res.status === 204) return undefined as T;

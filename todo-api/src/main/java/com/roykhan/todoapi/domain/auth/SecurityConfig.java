@@ -25,6 +25,8 @@ public class SecurityConfig {
     private final JwtFilter jwtFilter;
     private final OAuth2SuccessHandler successHandler;
     private final OAuth2UserService userService;
+    private final JwtAuthenticationEntryPoint authenticationEntryPoint;
+    private final CustomAccessDeniedHandler accessDeniedHandler;
 
     @Value("${cors.allowed-origins:http://localhost:5173}")
     private String allowedOrigins;
@@ -43,11 +45,10 @@ public class SecurityConfig {
                     "/", "/index.html")
                 .permitAll()
                 .anyRequest().authenticated())
-            .exceptionHandling(e -> e.authenticationEntryPoint((request, response, ex) -> {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json");
-                response.getWriter().write("{\"error\":\"Unauthorized\"}");
-            }))
+            .exceptionHandling(e -> e
+                .authenticationEntryPoint(authenticationEntryPoint)
+                .accessDeniedHandler(accessDeniedHandler)
+            )
             .oauth2Login(oauth -> oauth.userInfoEndpoint(user -> user.oidcUserService(userService))
                 .successHandler(successHandler))
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)

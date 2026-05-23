@@ -4,6 +4,7 @@ import {
   fetchTodos,
   createTodo,
   updateTodo,
+  updateWeights,
   deleteTodo,
   type TodoApiResponse,
 } from '@/features/todos/todo.api';
@@ -49,6 +50,7 @@ export function useTodos() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(false);
 
   const load = useCallback(() => {
@@ -78,17 +80,21 @@ export function useTodos() {
       });
       return;
     }
-    const created = await createTodo({
-      title: newTask.name,
-      parentId: newTask.parentId ? Number(newTask.parentId) : null,
-      status: toBackendStatus(newTask.status),
-      progress: newTask.progress,
-      startDate: newTask.startDate.toISOString().split('T')[0],
-      endDate: newTask.endDate.toISOString().split('T')[0],
-      color: newTask.color,
-      weight: newTask.weight ?? null,
-    });
-    setTasks((prev) => [...prev, toTask(created)]);
+    try {
+      const created = await createTodo({
+        title: newTask.name,
+        parentId: newTask.parentId ? Number(newTask.parentId) : null,
+        status: toBackendStatus(newTask.status),
+        progress: newTask.progress,
+        startDate: newTask.startDate.toISOString().split('T')[0],
+        endDate: newTask.endDate.toISOString().split('T')[0],
+        color: newTask.color,
+        weight: newTask.weight ?? null,
+      });
+      setTasks((prev) => [...prev, toTask(created)]);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : '할일 생성에 실패했습니다.');
+    }
   }, [isGuest]);
 
   const handleUpdateTask = useCallback(async (id: string, updates: Partial<Task>) => {
@@ -104,17 +110,21 @@ export function useTodos() {
     const current = tasks.find((t) => t.id === id);
     if (!current) return;
     const merged = { ...current, ...updates };
-    await updateTodo(Number(id), {
-      title: merged.name,
-      status: toBackendStatus(merged.status),
-      progress: merged.progress,
-      startDate: merged.startDate.toISOString().split('T')[0],
-      endDate: merged.endDate.toISOString().split('T')[0],
-      color: merged.color,
-      weight: merged.weight ?? null,
-    });
-    if (updates.status === 'completed' || updates.status === 'todo') {
-      await load();
+    try {
+      await updateTodo(Number(id), {
+        title: merged.name,
+        status: toBackendStatus(merged.status),
+        progress: merged.progress,
+        startDate: merged.startDate.toISOString().split('T')[0],
+        endDate: merged.endDate.toISOString().split('T')[0],
+        color: merged.color,
+      });
+      if (updates.status === 'completed' || updates.status === 'todo') {
+        await load();
+      }
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : '할일 수정에 실패했습니다.');
+      await load(); // 낙관적 업데이트 롤백
     }
   }, [isGuest, tasks, load]);
 
@@ -131,5 +141,31 @@ export function useTodos() {
     await deleteTodo(Number(id));
   }, [isGuest]);
 
-  return { tasks, loading, error, isGuest, handleAddTask, handleUpdateTask, handleDeleteTask, refetch: load };
+  const handleUpdateWeights = useCallback(async (updates: { id: string; weight: number }[]) => {
+    if (isGuest) {
+      setTasks(prev => {
+        const map = new Map(updates.map(u => [u.id, u.weight]));
+        const next = prev.map(t => map.has(t.id) ? { ...t, weight: map.get(t.id) } : t);
+        saveGuestTasks(next);
+        return next;
+      });
+      return;
+    }
+
+    const updatesMap = new Map(updates.map(u => [u.id, u.weight]));
+    setTasks(prev => prev.map(t => updatesMap.has(t.id) ? { ...t, weight: updatesMap.get(t.id) } : t));
+
+    try {
+      const updated = await updateWeights(updates.map(u => ({ id: Number(u.id), weight: u.weight })));
+      const updatedMap = new Map(updated.map(t => [String(t.id), toTask(t)]));
+      setTasks(prev => prev.map(t => updatedMap.has(t.id) ? updatedMap.get(t.id)! : t));
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : '가중치 수정에 실패했습니다.');
+      await load();
+    }
+  }, [isGuest, load]);
+
+  const clearActionError = useCallback(() => setActionError(null), []);
+
+  return { tasks, loading, error, actionError, clearActionError, isGuest, handleAddTask, handleUpdateTask, handleUpdateWeights, handleDeleteTask, refetch: load };
 }

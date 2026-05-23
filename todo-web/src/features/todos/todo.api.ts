@@ -37,7 +37,6 @@ export type UpdateTodoRequest = {
   startDate: string | null;
   endDate: string | null;
   color: string | null;
-  weight: number | null;
 };
 
 export async function fetchTodos() {
@@ -78,6 +77,13 @@ export type BulkCreateTodoItem = {
 export async function bulkCreateTodos(items: BulkCreateTodoItem[]) {
   return apiFetch<TodoApiResponse[]>('/api/todos/bulk', {
     method: 'POST',
+    body: JSON.stringify(items),
+  });
+}
+
+export async function updateWeights(items: { id: number; weight: number }[]) {
+  return apiFetch<TodoApiResponse[]>('/api/todos/weights', {
+    method: 'PATCH',
     body: JSON.stringify(items),
   });
 }

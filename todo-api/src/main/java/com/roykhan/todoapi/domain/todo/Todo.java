@@ -134,7 +134,7 @@ public class Todo {
     }
 
     public void update(String title, TodoStatus status, int progress,
-                       LocalDate startDate, LocalDate endDate, String color, Integer weight) {
+                       LocalDate startDate, LocalDate endDate, String color) {
         this.title = title;
         this.status = status;
         this.completed = status == TodoStatus.COMPLETED;
@@ -142,11 +142,14 @@ public class Todo {
         this.startDate = startDate;
         this.endDate = endDate;
         this.color = color;
-        this.weight = weight;
     }
 
     public void changeTitle(String title) {
         this.title = title;
+    }
+
+    public void updateWeight(Integer weight) {
+        this.weight = weight;
     }
 
     public void move(Todo newParent, int newSortOrder) {
