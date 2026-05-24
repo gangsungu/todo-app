@@ -42,20 +42,25 @@ function weightedAction() {
 }
 
 export function setup() {
-  const token = tokens[0];
+  // 유저별로 각자의 base todo 생성 (소유권 검증 통과를 위해)
+  const baseTodoIds = [];
   const body = JSON.stringify({
     title: 'load-base',
     startDate: '2026-01-01',
     endDate: '2026-12-31',
     progress: 0,
   });
-  const res = http.post(`${BASE_URL}/api/todos`, body, authCookie(token));
-  check(res, { 'setup: base todo created': (r) => r.status === 200 });
-  return { baseTodoId: JSON.parse(res.body).id };
+  for (let i = 0; i < tokens.length; i++) {
+    const res = http.post(`${BASE_URL}/api/todos`, body, authCookie(tokens[i]));
+    check(res, { [`setup[${i}]: base todo created`]: (r) => r.status === 200 });
+    baseTodoIds.push(JSON.parse(res.body).id);
+  }
+  return { baseTodoIds };
 }
 
-export default function ({ baseTodoId }) {
-  const token  = myToken();
+export default function ({ baseTodoIds }) {
+  const idx    = (__VU - 1) % tokens.length;
+  const token  = tokens[idx];
   const action = weightedAction();
 
   if (action === 'read') {
@@ -81,7 +86,7 @@ export default function ({ baseTodoId }) {
       startDate: '2026-01-01',
       endDate: '2026-12-31',
     });
-    const res = http.patch(`${BASE_URL}/api/todos/${baseTodoId}`, body, authCookie(token));
+    const res = http.patch(`${BASE_URL}/api/todos/${baseTodoIds[idx]}`, body, authCookie(token));
     errorRate.add(!check(res, { 'PATCH 200': (r) => r.status === 200 }));
     updateTime.add(res.timings.duration);
   }
