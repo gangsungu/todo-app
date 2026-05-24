@@ -15,3 +15,6 @@ build/
 
 # 환경변수 관리
 todo-api/.env
+
+# K6 로드 테스트 토큰 (로컬 생성 파일)
+k6/tokens.json

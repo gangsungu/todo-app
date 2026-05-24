@@ -3,7 +3,7 @@ import { check, sleep } from 'k6';
 import { Rate } from 'k6/metrics';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
-const TOKEN    = __ENV.K6_TOKEN;
+const TOKEN    = __ENV.K6_TOKEN; // tester11 토큰 단건 사용
 
 const errorRate = new Rate('errors');
 
@@ -16,13 +16,12 @@ export const options = {
   },
 };
 
-function authCookie() {
-  return { cookies: { access_token: TOKEN } };
+function authCookie(token) {
+  return { cookies: { access_token: token } };
 }
 
 export default function () {
-  // GET /api/todos
-  const res = http.get(`${BASE_URL}/api/todos`, authCookie());
+  const res = http.get(`${BASE_URL}/api/todos`, authCookie(TOKEN));
   const ok = check(res, {
     'GET /api/todos → 200': (r) => r.status === 200,
     'response is array':    (r) => Array.isArray(JSON.parse(r.body)),

@@ -53,7 +53,14 @@ tasks.named('test') {
 
 tasks.register('generateTestToken', JavaExec) {
     group = 'load-test'
-    description = 'K6 로드 테스트용 JWT 토큰 생성. 인자: <jwt-secret> <email> <expiration-hours>'
+    description = 'JWT 단건 생성. 인자: <secret> <email> [hours]'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.roykhan.todoapi.util.JwtTokenGenerator'
+}
+
+tasks.register('generateTestTokens', JavaExec) {
+    group = 'load-test'
+    description = 'tester11~99 JWT 배치 생성 → k6/tokens.json 으로 리다이렉트. 인자: <secret> <start> <end> [hours]'
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'com.roykhan.todoapi.util.JwtTokenGenerator'
 }
