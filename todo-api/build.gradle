@@ -50,3 +50,10 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+tasks.register('generateTestToken', JavaExec) {
+    group = 'load-test'
+    description = 'K6 로드 테스트용 JWT 토큰 생성. 인자: <jwt-secret> <email> <expiration-hours>'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.roykhan.todoapi.util.JwtTokenGenerator'
+}
