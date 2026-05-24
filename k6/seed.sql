@@ -1,6 +1,8 @@
 -- K6 로드 테스트용 유저 시드 (tester11 ~ tester99, 89명)
 -- 실행: mysql -h 127.0.0.1 -P 3308 -u gantodo -pgantodo1234 gantodo_db < k6/seed.sql
 
+SET NAMES utf8mb4;
+
 INSERT INTO users (email, name, profile_image, provider, created_at, updated_at)
 SELECT
     CONCAT('tester', n, '@example.com'),
