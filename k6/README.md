@@ -124,3 +124,27 @@ max 1.46s는 JVM 초기 워밍업 영향.
 에러 없이 완료. cascade PATCH 1건에 평균 3.67s — Load 테스트 PATCH(3.7s) 대비 유사하나 max 20s는 100 VU 동시 요청으로 인한 큐잉 지연. 현재 구조(`findAllForTreeByUserId` 이중 호출)의 한계가 수치로 확인됨.
 
 **개선 방향:** Recursive CTE로 subtree만 조회하도록 교체 시 cascade 쿼리 범위가 줄어 p95/max 개선 예상.
+
+---
+
+## 개선 후 재측정 (2026-05-25, Recursive CTE 적용)
+
+> 변경 사항: `cascadeCompleted` / `cascadeTodo`에서 `findAllForTreeByUserId`(전체 트리 로드) 제거.
+> Recursive CTE로 대상 노드의 자손 ID만 조회 후 해당 엔티티만 로드하도록 교체.
+
+### Cascade Stress 재측정 (VU 100, 2분)
+
+| 지표 | 기존 | 개선 후 | 변화 |
+|------|------|---------|------|
+| 에러율 | 0% | 0% | — |
+| avg | 3.67s | 3.38s | **-8%** |
+| median | 3.43s | 3.16s | **-8%** |
+| p90 | 6.27s | 5.58s | **-11%** |
+| p95 | 8.77s | 7.69s | **-12%** |
+| max | 20.39s | 12.78s | **-37%** |
+| 처리량 | 14.6 req/s | 17.5 req/s | **+20%** |
+
+p95 1.1s 단축, max 7.6s 단축, 처리량 20% 향상.
+쿼리 범위를 전체 유저 트리 → 대상 subtree로 좁힌 것만으로 고부하 구간의 큐잉 지연이 크게 줄었다.
+
+> Stress 시나리오 조건: 유저당 cascade-root 1개 + 자식 10개, VU 100이 root를 COMPLETED↔TODO 반복 토글.
