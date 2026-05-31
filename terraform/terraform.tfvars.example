@@ -1,0 +1,11 @@
+# 이 파일을 terraform.tfvars로 복사 후 실제 값 채우기
+# terraform.tfvars는 .gitignore 처리되어 있음
+
+aws_region       = "ap-northeast-2"
+vpc_id           = "vpc-xxxxxxxxxxxxxxxxx"   # 앱 EC2와 동일한 VPC
+subnet_id        = "subnet-xxxxxxxxxxxxxxxxx" # 앱 EC2와 같은 VPC 내 서브넷
+ami_id           = "ami-05d2438ca66594916"    # Amazon Linux 2023 (ap-northeast-2)
+instance_type    = "t3.medium"
+key_name         = "your-keypair-name"
+allowed_ssh_cidr = "x.x.x.x/32"             # 내 IP
+app_host         = "10.0.x.x"               # 앱 EC2 Private IP
