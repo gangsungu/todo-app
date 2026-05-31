@@ -37,9 +37,11 @@ public class User {
     private String refreshToken;
 
     @CreationTimestamp
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     public static User create(String email, String name, String profileImage, String provider) {
