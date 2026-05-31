@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate } from 'k6/metrics';
+import { generateMarkdown } from './summary.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 const TOKEN    = __ENV.K6_TOKEN; // tester11 토큰 단건 사용
@@ -29,4 +30,12 @@ export default function () {
   errorRate.add(!ok);
 
   sleep(1);
+}
+
+export function handleSummary(data) {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  return {
+    [`/home/ubuntu/k6-results/smoke_${ts}.md`]: generateMarkdown('Smoke', data),
+    stdout: '\n',
+  };
 }

@@ -2,6 +2,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
 import { SharedArray } from 'k6/data';
+import { generateMarkdown } from './summary.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 
@@ -92,4 +93,12 @@ export default function ({ baseTodoIds }) {
   }
 
   sleep(Math.random() * 2 + 0.5);
+}
+
+export function handleSummary(data) {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  return {
+    [`/home/ubuntu/k6-results/load_${ts}.md`]: generateMarkdown('Load', data),
+    stdout: '\n',
+  };
 }

@@ -11,6 +11,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
 import { SharedArray } from 'k6/data';
+import { generateMarkdown } from './summary.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 
@@ -90,16 +91,9 @@ export default function ({ rootIds }) {
 }
 
 export function handleSummary(data) {
-  const d = data.metrics.cascade_duration;
-  if (!d) return {};
-
-  console.log('\n=== Cascade Stress 결과 ===');
-  console.log(`p50  : ${d.values['p(50)'].toFixed(0)}ms`);
-  console.log(`p95  : ${d.values['p(95)'].toFixed(0)}ms`);
-  console.log(`p99  : ${d.values['p(99)'].toFixed(0)}ms`);
-  console.log(`max  : ${d.values.max.toFixed(0)}ms`);
-  console.log(`에러율: ${(data.metrics.errors.values.rate * 100).toFixed(2)}%`);
-  console.log('===========================\n');
-
-  return {};
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  return {
+    [`/home/ubuntu/k6-results/stress_${ts}.md`]: generateMarkdown('Cascade Stress', data),
+    stdout: '\n',
+  };
 }
