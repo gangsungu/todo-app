@@ -25,3 +25,7 @@ terraform/terraform.tfvars
 terraform/*.tfstate
 terraform/*.tfstate.backup
 terraform/.terraform.lock.hcl
+
+# AWS CLI 설치 파일
+aws/
+awscliv2.zip
