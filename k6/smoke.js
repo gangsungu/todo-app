@@ -11,6 +11,7 @@ const errorRate = new Rate('errors');
 export const options = {
   vus: 5,
   duration: '30s',
+  summaryTrendStats: ['avg', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
   thresholds: {
     http_req_duration: ['p(95)<500'],
     errors: ['rate<0.01'],

@@ -27,6 +27,7 @@ export const options = {
     { duration: '1m',  target: 100 },
     { duration: '30s', target: 0   },
   ],
+  summaryTrendStats: ['avg', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
 };
 
 const HEADERS = { 'Content-Type': 'application/json' };
