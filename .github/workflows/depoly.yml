@@ -49,11 +49,39 @@ jobs:
             # compose 파일을 서버에서 자동 생성 (서버에 scp 필요 없음)
             cat > docker-compose.yml << 'EOF'
             services:
+              mysql:
+                image: mysql:8.0
+                container_name: todo-mysql
+                environment:
+                  MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+                  MYSQL_DATABASE: gantodo_db
+                  MYSQL_USER: gantodo
+                  MYSQL_PASSWORD: ${{ secrets.DB_PASSWORD }}
+                volumes:
+                  - mysql-data:/var/lib/mysql
+                healthcheck:
+                  test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+                  interval: 10s
+                  timeout: 5s
+                  retries: 5
+                restart: unless-stopped
+
               api:
                 image: ghcr.io/${{ github.repository_owner }}/todo-api:latest
                 container_name: todo-api
                 environment:
                   - SPRING_PROFILES_ACTIVE=prod
+                  - DB_URL=jdbc:mysql://mysql:3306/gantodo_db?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+                  - DB_USERNAME=gantodo
+                  - DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+                  - JWT_SECRET=${{ secrets.JWT_SECRET }}
+                  - GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+                  - GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+                  - APP_FRONTEND_URL=${{ secrets.APP_FRONTEND_URL }}
+                  - COOKIE_SECURE=true
+                depends_on:
+                  mysql:
+                    condition: service_healthy
                 restart: unless-stopped
 
               web:
@@ -64,6 +92,9 @@ jobs:
                 depends_on:
                   - api
                 restart: unless-stopped
+
+            volumes:
+              mysql-data:
             EOF
 
             docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
