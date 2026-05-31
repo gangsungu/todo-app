@@ -14,7 +14,7 @@ export function generateMarkdown(scenario, data) {
   const reqs = data.metrics.http_reqs;
   const err  = data.metrics.errors;
 
-  const p50  = req  ? fmt(req.values['p(50)'])  : 'N/A';
+  const p50  = req  ? fmt(req.values['med'])     : 'N/A';
   const p90  = req  ? fmt(req.values['p(90)'])  : 'N/A';
   const p95  = req  ? fmt(req.values['p(95)'])  : 'N/A';
   const p99  = req  ? fmt(req.values['p(99)'])  : 'N/A';

@@ -19,6 +19,7 @@ export const options = {
     { duration: '3m', target: 50 },
     { duration: '1m', target: 0  },
   ],
+  summaryTrendStats: ['avg', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
   thresholds: {
     http_req_duration: ['p(95)<1000'],
     errors: ['rate<0.01'],
