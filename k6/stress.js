@@ -26,6 +26,7 @@ const errorRate   = new Rate('errors');
 const cascadeTime = new Trend('cascade_duration', true);
 
 export const options = {
+  setupTimeout: '10m',
   stages: [
     { duration: '30s', target: 200 },
     { duration: '1m',  target: 200 },
@@ -63,25 +64,22 @@ export function setup() {
     const rootId = JSON.parse(rootRes.body).id;
     rootIds.push(rootId);
 
-    for (let j = 0; j < 10; j++) {
-      http.post(`${BASE_URL}/api/todos`, JSON.stringify({
-        title: `child-${j}`,
-        parentId: rootId,
-        startDate: '2026-01-01',
-        endDate: '2026-12-31',
-        progress: 0,
-      }), authCookie(token));
-    }
+    const childReqs = Array.from({ length: 10 }, (_, j) => [
+      'POST',
+      `${BASE_URL}/api/todos`,
+      JSON.stringify({ title: `child-${j}`, parentId: rootId, startDate: '2026-01-01', endDate: '2026-12-31', progress: 0 }),
+      authCookie(token),
+    ]);
+    http.batch(childReqs);
 
     const bg = bgCount(i);
-    for (let k = 0; k < bg; k++) {
-      http.post(`${BASE_URL}/api/todos`, JSON.stringify({
-        title: `bg-${k}`,
-        startDate: '2026-01-01',
-        endDate: '2026-12-31',
-        progress: 0,
-      }), authCookie(token));
-    }
+    const bgReqs = Array.from({ length: bg }, (_, k) => [
+      'POST',
+      `${BASE_URL}/api/todos`,
+      JSON.stringify({ title: `bg-${k}`, startDate: '2026-01-01', endDate: '2026-12-31', progress: 0 }),
+      authCookie(token),
+    ]);
+    http.batch(bgReqs);
   }
 
   return { rootIds };
