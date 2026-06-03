@@ -97,9 +97,10 @@ export default function ({ baseTodoIds }) {
 }
 
 export function handleSummary(data) {
-  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const ts    = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const label = __ENV.TEST_LABEL ? `_${__ENV.TEST_LABEL}` : '';
   return {
-    [`/home/ubuntu/k6-results/load_${ts}.md`]: generateMarkdown('Load', data),
+    [`/home/ubuntu/k6-results/load${label}_${ts}.md`]: generateMarkdown('Load', data),
     stdout: '\n',
   };
 }
