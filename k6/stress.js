@@ -1,11 +1,15 @@
 /**
  * Cascade Stress 시나리오
  *
- * 목적: 부모 COMPLETED 처리 시 발생하는 findAllForTreeByUserId 이중 호출이
- *       동시 쓰기 환경에서 어떻게 버티는지 수치로 확인.
+ * 목적: Recursive CTE 최적화 before/after 성능 비교.
+ *       유저별 할일 규모를 현실적으로 분포시켜 쿼리 오버헤드를 측정.
  *
- * 유저별로 별도 cascade 트리를 생성해 DB 행 락 경합 없이
- * 쿼리 오버헤드만 측정합니다.
+ * 유저 분포 (tester11~99, 89명):
+ *   - light  (i <  30): 배경 할일 100개  → cascade 시 111행 스캔 (before)
+ *   - medium (i <  60): 배경 할일 500개  → cascade 시 511행 스캔 (before)
+ *   - heavy  (i >= 60): 배경 할일 1000개 → cascade 시 1011행 스캔 (before)
+ *
+ * after(CTE): 유저 규모와 무관하게 항상 자식 10개 ID만 조회.
  */
 import http from 'k6/http';
 import { check, sleep } from 'k6';
@@ -23,8 +27,8 @@ const cascadeTime = new Trend('cascade_duration', true);
 
 export const options = {
   stages: [
-    { duration: '30s', target: 100 },
-    { duration: '1m',  target: 100 },
+    { duration: '30s', target: 200 },
+    { duration: '1m',  target: 200 },
     { duration: '30s', target: 0   },
   ],
   summaryTrendStats: ['avg', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
@@ -36,15 +40,16 @@ function authCookie(token) {
   return { cookies: { access_token: token }, headers: HEADERS };
 }
 
+function bgCount(i) {
+  if (i < 30) return 100;
+  if (i < 60) return 500;
+  return 1000;
+}
+
 export function setup() {
-  // 유저별로:
-  //   - cascade-root + 자식 10개 (cascade 대상 subtree)
-  //   - 배경 할일 500개 (findAllForTreeByUserId 스캔 부하용)
-  // CTE 최적화 효과: before → 511행 로드, after → 10개 ID만 조회
-  const count = Math.min(tokens.length, 10);
   const rootIds = [];
 
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
 
     const rootRes = http.post(`${BASE_URL}/api/todos`, JSON.stringify({
@@ -68,8 +73,8 @@ export function setup() {
       }), authCookie(token));
     }
 
-    // cascade 대상과 무관한 배경 할일 500개
-    for (let k = 0; k < 500; k++) {
+    const bg = bgCount(i);
+    for (let k = 0; k < bg; k++) {
       http.post(`${BASE_URL}/api/todos`, JSON.stringify({
         title: `bg-${k}`,
         startDate: '2026-01-01',
