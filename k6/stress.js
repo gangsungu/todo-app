@@ -92,9 +92,10 @@ export default function ({ rootIds }) {
 }
 
 export function handleSummary(data) {
-  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const ts    = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const label = __ENV.TEST_LABEL ? `_${__ENV.TEST_LABEL}` : '';
   return {
-    [`/home/ubuntu/k6-results/stress_${ts}.md`]: generateMarkdown('Cascade Stress', data),
+    [`/home/ubuntu/k6-results/stress${label}_${ts}.md`]: generateMarkdown('Cascade Stress', data),
     stdout: '\n',
   };
 }

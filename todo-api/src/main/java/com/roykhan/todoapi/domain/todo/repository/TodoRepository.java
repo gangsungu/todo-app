@@ -29,14 +29,4 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
 
     @Query("select t from Todo t left join fetch t.parent where t.id in :ids and t.user.id = :userId")
     List<Todo> findByIdsAndUserId(Collection<Long> ids, Long userId);
-
-    @Query(value = """
-        WITH RECURSIVE subtree AS (
-            SELECT id FROM todos WHERE id = ?1
-            UNION ALL
-            SELECT t.id FROM todos t INNER JOIN subtree s ON t.parent_id = s.id
-        )
-        SELECT id FROM subtree WHERE id != ?1
-        """, nativeQuery = true)
-    List<Long> findDescendantIds(Long rootId);
 }
