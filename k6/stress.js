@@ -37,8 +37,10 @@ function authCookie(token) {
 }
 
 export function setup() {
-  // 유저별로 cascade-root + 자식 10개 생성
-  // tokens 전체 대신 앞 10개만 사용 (setup 속도 및 DB 부하 고려)
+  // 유저별로:
+  //   - cascade-root + 자식 10개 (cascade 대상 subtree)
+  //   - 배경 할일 500개 (findAllForTreeByUserId 스캔 부하용)
+  // CTE 최적화 효과: before → 511행 로드, after → 10개 ID만 조회
   const count = Math.min(tokens.length, 10);
   const rootIds = [];
 
@@ -60,6 +62,16 @@ export function setup() {
       http.post(`${BASE_URL}/api/todos`, JSON.stringify({
         title: `child-${j}`,
         parentId: rootId,
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+        progress: 0,
+      }), authCookie(token));
+    }
+
+    // cascade 대상과 무관한 배경 할일 500개
+    for (let k = 0; k < 500; k++) {
+      http.post(`${BASE_URL}/api/todos`, JSON.stringify({
+        title: `bg-${k}`,
         startDate: '2026-01-01',
         endDate: '2026-12-31',
         progress: 0,
