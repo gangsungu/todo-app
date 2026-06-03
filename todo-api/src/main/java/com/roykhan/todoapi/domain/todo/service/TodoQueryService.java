@@ -11,9 +11,7 @@ import com.roykhan.todoapi.domain.todo.dto.WeightUpdateItem;
 import com.roykhan.todoapi.domain.todo.repository.TodoRepository;
 import com.roykhan.todoapi.domain.user.User;
 import com.roykhan.todoapi.domain.user.repository.UserRepository;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,53 +76,14 @@ public class TodoQueryService {
         return roots;
     }
 
-    private void cascadeCompleted(Long userId, Long rootId) {
-        List<Todo> all = todoRepository.findAllForTreeByUserId(userId);
-
-        Map<Long, Todo> byId = new HashMap<>(all.size());
-        Map<Long, List<Long>> byParentId = new HashMap<>();
-        for (Todo t : all) {
-            byId.put(t.getId(), t);
-            Long parentId = t.getParent() == null ? null : t.getParent().getId();
-            if (parentId != null) {
-                byParentId.computeIfAbsent(parentId, k -> new ArrayList<>()).add(t.getId());
-            }
-        }
-
-        Deque<Long> q = new ArrayDeque<>(byParentId.getOrDefault(rootId, List.of()));
-        while (!q.isEmpty()) {
-            Long cur = q.poll();
-            Todo curTodo = byId.get(cur);
-            if (curTodo != null) {
-                curTodo.markCompleted();
-                List<Long> children = byParentId.get(cur);
-                if (children != null) q.addAll(children);
-            }
-        }
-    }
-
-    private void cascadeTodo(Long userId, Long rootId) {
-        List<Todo> all = todoRepository.findAllForTreeByUserId(userId);
-
-        Map<Long, Todo> byId = new HashMap<>(all.size());
-        Map<Long, List<Long>> byParentId = new HashMap<>();
-        for (Todo t : all) {
-            byId.put(t.getId(), t);
-            Long parentId = t.getParent() == null ? null : t.getParent().getId();
-            if (parentId != null) {
-                byParentId.computeIfAbsent(parentId, k -> new ArrayList<>()).add(t.getId());
-            }
-        }
-
-        Deque<Long> q = new ArrayDeque<>(byParentId.getOrDefault(rootId, List.of()));
-        while (!q.isEmpty()) {
-            Long cur = q.poll();
-            Todo curTodo = byId.get(cur);
-            if (curTodo != null) {
-                curTodo.markTodo();
-                List<Long> children = byParentId.get(cur);
-                if (children != null) q.addAll(children);
-            }
+    private void cascadeStatus(Long rootId, boolean completed) {
+        List<Long> ids = todoRepository.findDescendantIds(rootId);
+        if (ids.isEmpty()) return;
+        List<Todo> descendants = todoRepository.findAllById(ids);
+        if (completed) {
+            descendants.forEach(Todo::markCompleted);
+        } else {
+            descendants.forEach(Todo::markTodo);
         }
     }
 
@@ -220,9 +179,9 @@ public class TodoQueryService {
         );
 
         if (request.status() == TodoStatus.COMPLETED) {
-            cascadeCompleted(user.getId(), id);
+            cascadeStatus(id, true);
         } else if (request.status() == TodoStatus.TODO) {
-            cascadeTodo(user.getId(), id);
+            cascadeStatus(id, false);
         }
 
         return TodoResponse.from(todo);
