@@ -15,6 +15,7 @@ import com.roykhan.todoapi.domain.todo.TodoStatus;
 import com.roykhan.todoapi.domain.todo.repository.TodoRepository;
 import com.roykhan.todoapi.domain.user.User;
 import com.roykhan.todoapi.domain.user.repository.UserRepository;
+import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.Cookie;
 import java.time.LocalDate;
 import java.util.List;
@@ -26,6 +27,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +43,7 @@ class TodoControllerIntegrationTest {
     @Autowired JwtProvider jwtProvider;
     @Autowired UserRepository userRepository;
     @Autowired TodoRepository todoRepository;
+    @Autowired EntityManager entityManager;
 
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
@@ -60,12 +63,29 @@ class TodoControllerIntegrationTest {
     }
 
     private Todo savedTodo(String title, Todo parent) {
+        return savedTodoFor(testUser, title, parent);
+    }
+
+    private Todo savedTodoFor(User owner, String title, Todo parent) {
         return todoRepository.save(Todo.create(
-            title, testUser, parent, 0,
+            title, owner, parent, 0,
             TodoStatus.TODO, 0,
             LocalDate.now(), LocalDate.now().plusDays(7),
             null, null
         ));
+    }
+
+    private ResultActions patchStatus(Long id, String status) throws Exception {
+        var body = Map.of(
+            "title", "할일",
+            "status", status,
+            "progress", 0,
+            "startDate", "2026-01-01",
+            "endDate", "2026-01-31"
+        );
+        return mockMvc.perform(withAuth(patch("/api/todos/" + id))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(body)));
     }
 
     // ── 인증 ──────────────────────────────────────────────────────────────────
@@ -182,6 +202,45 @@ class TodoControllerIntegrationTest {
         assertThat(todoRepository.findById(child2.getId()).get().getStatus()).isEqualTo(TodoStatus.COMPLETED);
     }
 
+    @Test
+    void 부모를_다시_TODO로_되돌리면_자식도_TODO로_cascade() throws Exception {
+        Todo parent = savedTodo("부모", null);
+        Todo child = savedTodo("자식", parent);
+
+        // 먼저 COMPLETED 로 만든 뒤
+        patchStatus(parent.getId(), "COMPLETED").andExpect(status().isOk());
+        todoRepository.flush();
+        assertThat(todoRepository.findById(child.getId()).get().getStatus()).isEqualTo(TodoStatus.COMPLETED);
+
+        // 다시 TODO 로 되돌리면 자식도 풀려야 한다
+        patchStatus(parent.getId(), "TODO").andExpect(status().isOk());
+        todoRepository.flush();
+
+        Todo refreshedChild = todoRepository.findById(child.getId()).get();
+        assertThat(refreshedChild.getStatus()).isEqualTo(TodoStatus.TODO);
+        // status 와 completed 플래그가 항상 동기화되어야 한다
+        assertThat(refreshedChild.isCompleted()).isFalse();
+    }
+
+    @Test
+    void 손자까지_재귀적으로_cascade_되고_completed_플래그도_동기화() throws Exception {
+        Todo parent = savedTodo("부모", null);
+        Todo child = savedTodo("자식", parent);
+        Todo grandChild = savedTodo("손자", child);
+
+        patchStatus(parent.getId(), "COMPLETED").andExpect(status().isOk());
+        todoRepository.flush();
+
+        Todo refreshedChild = todoRepository.findById(child.getId()).get();
+        Todo refreshedGrandChild = todoRepository.findById(grandChild.getId()).get();
+
+        // 2단계 아래 손자까지 전파되어야 한다 (재귀 CTE)
+        assertThat(refreshedChild.getStatus()).isEqualTo(TodoStatus.COMPLETED);
+        assertThat(refreshedChild.isCompleted()).isTrue();
+        assertThat(refreshedGrandChild.getStatus()).isEqualTo(TodoStatus.COMPLETED);
+        assertThat(refreshedGrandChild.isCompleted()).isTrue();
+    }
+
     // ── DELETE /api/todos/{id} ────────────────────────────────────────────────
 
     @Test
@@ -204,6 +263,67 @@ class TodoControllerIntegrationTest {
 
         mockMvc.perform(withAuth(delete("/api/todos/" + otherTodo.getId())))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 부모_삭제시_자식과_손자까지_cascade_삭제() throws Exception {
+        Long parentId = savedTodo("부모", null).getId();
+        Long childId = savedTodo("자식", todoRepository.getReferenceById(parentId)).getId();
+        Long grandChildId = savedTodo("손자", todoRepository.getReferenceById(childId)).getId();
+
+        // 실제 DELETE 요청처럼 새 영속성 컨텍스트에서 lazy 로딩되도록 flush+clear
+        entityManager.flush();
+        entityManager.clear();
+
+        mockMvc.perform(withAuth(delete("/api/todos/" + parentId)))
+            .andExpect(status().isNoContent());
+
+        entityManager.flush();
+        // CascadeType.ALL 로 트리 전체가 삭제되어 고아 노드가 남지 않아야 한다
+        assertThat(todoRepository.findById(parentId)).isEmpty();
+        assertThat(todoRepository.findById(childId)).isEmpty();
+        assertThat(todoRepository.findById(grandChildId)).isEmpty();
+    }
+
+    // ── 사용자 격리 (User Isolation) ──────────────────────────────────────────
+
+    @Test
+    void 다른_유저의_할일_수정시_400() throws Exception {
+        User other = userRepository.save(User.create("other@example.com", "Other", null, "google"));
+        Todo otherTodo = savedTodoFor(other, "타인 할일", null);
+
+        patchStatus(otherTodo.getId(), "COMPLETED")
+            .andExpect(status().isBadRequest());
+
+        // 타인의 할일 상태가 변경되지 않아야 한다
+        todoRepository.flush();
+        assertThat(todoRepository.findById(otherTodo.getId()).get().getStatus())
+            .isEqualTo(TodoStatus.TODO);
+    }
+
+    @Test
+    void 목록_조회는_본인_할일만_반환() throws Exception {
+        savedTodo("내 할일1", null);
+        savedTodo("내 할일2", null);
+        User other = userRepository.save(User.create("other@example.com", "Other", null, "google"));
+        savedTodoFor(other, "타인 할일", null);
+
+        mockMvc.perform(withAuth(get("/api/todos")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[?(@.title == '타인 할일')]").isEmpty());
+    }
+
+    @Test
+    void 트리_조회는_본인_할일만_반환() throws Exception {
+        savedTodo("내 루트", null);
+        User other = userRepository.save(User.create("other@example.com", "Other", null, "google"));
+        savedTodoFor(other, "타인 루트", null);
+
+        mockMvc.perform(withAuth(get("/api/todos/tree")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].title").value("내 루트"));
     }
 
     // ── PATCH /api/todos/weights ──────────────────────────────────────────────
@@ -292,5 +412,41 @@ class TodoControllerIntegrationTest {
         Long parentId = response.get(0).get("id").asLong();
         Long childParentId = response.get(1).get("parentId").asLong();
         assertThat(childParentId).isEqualTo(parentId);
+    }
+
+    @Test
+    void bulk_생성_같은_clientTempId로_재요청해도_중복생성_안됨() throws Exception {
+        var body = List.of(
+            Map.of(
+                "title", "재시도 대상",
+                "clientTempId", "temp-retry",
+                "startDate", "2026-01-01",
+                "endDate", "2026-01-31",
+                "progress", 0
+            )
+        );
+        String json = objectMapper.writeValueAsString(body);
+
+        // 1차 요청 → 생성
+        var first = mockMvc.perform(withAuth(post("/api/todos/bulk"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+            .andExpect(status().isOk())
+            .andReturn();
+        Long firstId = objectMapper.readTree(first.getResponse().getContentAsString())
+            .get(0).get("id").asLong();
+
+        // 2차 요청(같은 clientTempId, 재시도 시뮬레이션) → 기존 항목을 그대로 반환
+        var second = mockMvc.perform(withAuth(post("/api/todos/bulk"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+            .andExpect(status().isOk())
+            .andReturn();
+        Long secondId = objectMapper.readTree(second.getResponse().getContentAsString())
+            .get(0).get("id").asLong();
+
+        // 멱등성: 같은 행을 반환하고 중복 행이 생기지 않아야 한다
+        assertThat(secondId).isEqualTo(firstId);
+        assertThat(todoRepository.findAllForTreeByUserId(testUser.getId())).hasSize(1);
     }
 }
