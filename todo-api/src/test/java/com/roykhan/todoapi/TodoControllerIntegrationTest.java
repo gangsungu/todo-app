@@ -415,6 +415,20 @@ class TodoControllerIntegrationTest {
             .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void 가중치_100_초과면_400() throws Exception {
+        Todo t1 = savedTodo("항목1", null);
+
+        var body = List.of(Map.of("id", t1.getId(), "weight", 150));
+
+        // 리스트 원소의 @Max(100) 위반은 HandlerMethodValidationException 으로
+        // 처리되어 500이 아닌 400을 반환해야 한다
+        mockMvc.perform(withAuth(patch("/api/todos/weights"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isBadRequest());
+    }
+
     // ── 날짜 경계값 ────────────────────────────────────────────────────────────
 
     @Test
