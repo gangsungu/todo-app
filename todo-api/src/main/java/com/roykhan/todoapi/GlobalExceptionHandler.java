@@ -1,5 +1,6 @@
 package com.roykhan.todoapi;
 
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -24,6 +25,16 @@ public class GlobalExceptionHandler {
     public ErrorResponse handleValidation(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getFieldErrors().stream()
             .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+            .findFirst()
+            .orElse("입력값이 올바르지 않습니다.");
+        return new ErrorResponse(message);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleConstraintViolation(ConstraintViolationException ex) {
+        String message = ex.getConstraintViolations().stream()
+            .map(v -> v.getPropertyPath() + ": " + v.getMessage())
             .findFirst()
             .orElse("입력값이 올바르지 않습니다.");
         return new ErrorResponse(message);
