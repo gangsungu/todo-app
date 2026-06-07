@@ -15,14 +15,20 @@ import com.roykhan.todoapi.domain.todo.TodoStatus;
 import com.roykhan.todoapi.domain.todo.repository.TodoRepository;
 import com.roykhan.todoapi.domain.user.User;
 import com.roykhan.todoapi.domain.user.repository.UserRepository;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.Cookie;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import javax.crypto.SecretKey;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -44,6 +50,7 @@ class TodoControllerIntegrationTest {
     @Autowired UserRepository userRepository;
     @Autowired TodoRepository todoRepository;
     @Autowired EntityManager entityManager;
+    @Value("${jwt.secret}") String jwtSecret;
 
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
@@ -93,6 +100,44 @@ class TodoControllerIntegrationTest {
     @Test
     void 쿠키_없이_요청하면_401() throws Exception {
         mockMvc.perform(get("/api/todos"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void 만료된_토큰이면_401() throws Exception {
+        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        long now = System.currentTimeMillis();
+        String expiredToken = Jwts.builder()
+            .subject(testUser.getEmail())
+            .issuedAt(new Date(now - 20_000))
+            .expiration(new Date(now - 10_000)) // 이미 만료된 시각
+            .signWith(key)
+            .compact();
+
+        mockMvc.perform(get("/api/todos").cookie(new Cookie("access_token", expiredToken)))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void 서명이_위조된_토큰이면_401() throws Exception {
+        // 서버 시크릿과 다른 키로 서명한 토큰 → 서명 검증 실패
+        SecretKey wrongKey = Keys.hmacShaKeyFor(
+            "completely-different-secret-key-32bytes-long".getBytes(StandardCharsets.UTF_8));
+        long now = System.currentTimeMillis();
+        String forgedToken = Jwts.builder()
+            .subject(testUser.getEmail())
+            .issuedAt(new Date(now))
+            .expiration(new Date(now + 3_600_000))
+            .signWith(wrongKey)
+            .compact();
+
+        mockMvc.perform(get("/api/todos").cookie(new Cookie("access_token", forgedToken)))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void 형식이_깨진_토큰이면_401() throws Exception {
+        mockMvc.perform(get("/api/todos").cookie(new Cookie("access_token", "not-a-jwt")))
             .andExpect(status().isUnauthorized());
     }
 
