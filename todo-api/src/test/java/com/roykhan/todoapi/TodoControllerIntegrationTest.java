@@ -379,6 +379,61 @@ class TodoControllerIntegrationTest {
             .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void 가중치_단일_항목_100퍼센트면_성공() throws Exception {
+        Todo t1 = savedTodo("항목1", null);
+
+        var body = List.of(Map.of("id", t1.getId(), "weight", 100));
+
+        mockMvc.perform(withAuth(patch("/api/todos/weights"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].weight").value(100));
+    }
+
+    @Test
+    void 가중치_존재하지_않는_id_포함시_400() throws Exception {
+        Todo t1 = savedTodo("항목1", null);
+
+        var body = List.of(
+            Map.of("id", t1.getId(), "weight", 50),
+            Map.of("id", 999999, "weight", 50)
+        );
+
+        mockMvc.perform(withAuth(patch("/api/todos/weights"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 가중치_빈_리스트면_400() throws Exception {
+        mockMvc.perform(withAuth(patch("/api/todos/weights"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("[]"))
+            .andExpect(status().isBadRequest());
+    }
+
+    // ── 날짜 경계값 ────────────────────────────────────────────────────────────
+
+    @Test
+    void 할일_생성_시작일과_종료일이_같으면_성공() throws Exception {
+        var body = Map.of(
+            "title", "당일 할일",
+            "startDate", "2026-01-15",
+            "endDate", "2026-01-15",
+            "progress", 0
+        );
+
+        mockMvc.perform(withAuth(post("/api/todos"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.startDate").value("2026-01-15"))
+            .andExpect(jsonPath("$.endDate").value("2026-01-15"));
+    }
+
     // ── POST /api/todos/bulk ──────────────────────────────────────────────────
 
     @Test
