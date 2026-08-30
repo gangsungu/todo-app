@@ -347,6 +347,50 @@ class TodoControllerIntegrationTest {
     }
 
     @Test
+    void 다른_유저의_할일을_부모로_지정하면_400() throws Exception {
+        User other = userRepository.save(User.create("other@example.com", "Other", null, "google"));
+        Todo otherTodo = savedTodoFor(other, "타인 부모", null);
+
+        var body = Map.of(
+            "title", "남의 트리에 붙이기",
+            "parentId", otherTodo.getId(),
+            "startDate", "2026-01-01",
+            "endDate", "2026-01-31",
+            "progress", 0
+        );
+
+        mockMvc.perform(withAuth(post("/api/todos"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isBadRequest());
+
+        // 타인의 트리에 자식이 매달리지 않아야 한다
+        todoRepository.flush();
+        assertThat(todoRepository.findAll())
+            .noneMatch(t -> "남의 트리에 붙이기".equals(t.getTitle()));
+    }
+
+    @Test
+    void 본인_할일을_부모로_지정하면_성공() throws Exception {
+        Todo myParent = savedTodo("내 부모", null);
+
+        var body = Map.of(
+            "title", "내 자식",
+            "parentId", myParent.getId(),
+            "startDate", "2026-01-01",
+            "endDate", "2026-01-31",
+            "progress", 0
+        );
+
+        mockMvc.perform(withAuth(post("/api/todos"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("내 자식"))
+            .andExpect(jsonPath("$.parentId").value(myParent.getId()));
+    }
+
+    @Test
     void 목록_조회는_본인_할일만_반환() throws Exception {
         savedTodo("내 할일1", null);
         savedTodo("내 할일2", null);
